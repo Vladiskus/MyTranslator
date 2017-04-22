@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Переводчик</string>
+    <string name="text_input">Введите текст</string>
+    <string name="recently_used">Недавно использованные</string>
+    <string name="all_languages">Все языки</string>
+    <string name="auto_detect">Автоопределение</string>
+    <string name="russian">Русский</string>
+    <string name="english">Английский</string>
+    <string name="recording">Говорите</string>
+    <string name="title_translator">Переводчик</string>
+    <string name="title_history">История</string>
+    <string name="title_favorites">Избранное</string>
+    <string name="search_in_history">Искать в Истории</string>
+    <string name="search_in_favorites">Искать в Избранном</string>
+
+    // Названия файлов, где хранятся SharedPreferences
+    <string name="recent_target_languages">недавние языки перевода</string>
+    <string name="recent_source_languages">недавние языки текста</string>
+    <string name="is_auto_detect_selected">выбран ли вариант автоопределения</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+</resources>
