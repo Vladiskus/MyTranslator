@@ -5,4 +5,5 @@
     <color name="colorBackground">#dfbfff</color>
     <color name="colorAccent">#5F1273</color>
     <color name="colorCheck">#D5AEFC</color>
+    <color name="gray">#696969</color>
 </resources>

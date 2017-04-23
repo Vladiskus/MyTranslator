@@ -52,6 +52,7 @@ public class TranslationFragment extends Fragment {
     public TextView sourceLanguageView;
     public TextView targetLanguageView;
     private ImageButton clearView;
+    private ImageButton exchangeView;
     private ImageView upperSpeakerView;
     private ImageView lowerSpeakerView;
     private ImageView microphoneView;
@@ -89,6 +90,7 @@ public class TranslationFragment extends Fragment {
         sourceLanguageView = (TextView) rootView.findViewById(R.id.sourceLanguage);
         targetLanguageView = (TextView) rootView.findViewById(R.id.targetLanguage);
         clearView = (ImageButton) rootView.findViewById(R.id.close);
+        exchangeView = (ImageButton) rootView.findViewById(R.id.exchange);
         upperSpeakerView = (ImageView) rootView.findViewById(R.id.speaker);
         lowerSpeakerView = (ImageView) rootView.findViewById(R.id.speaker2);
         microphoneView = (ImageView) rootView.findViewById(R.id.microphone);
@@ -281,7 +283,7 @@ public class TranslationFragment extends Fragment {
                 } else getChildFragmentManager().popBackStack();
             }
         });
-        rootView.findViewById(R.id.exchange).setOnClickListener(new View.OnClickListener() {
+        exchangeView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 // Автоопредение не может быть выбрано для языка перевода, поэтому вместо него

@@ -1,5 +1,6 @@
 package com.my.first.translator.fragments;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
@@ -27,7 +28,10 @@ public class HistoryFragment extends Fragment {
 
     private ViewGroup mContainerView;
     private EditText searchFieldView;
+    private ImageView deleteView;
     private boolean isFavorites;
+    final InputMethodManager inputMethodManager = (InputMethodManager) getActivity()
+            .getSystemService(INPUT_METHOD_SERVICE);
 
     // Возможны две вариации фрагментав зависимости от того, представляет ли он всю историю переводов
     // или только избранные элементы.
@@ -45,33 +49,28 @@ public class HistoryFragment extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_history, container, false);
         mContainerView = (ViewGroup) rootView.findViewById(R.id.container);
         searchFieldView = (EditText) rootView.findViewById(R.id.editText);
+        deleteView = (ImageView) rootView.findViewById(R.id.delete);
         isFavorites = getArguments().getBoolean("isFavorites");
-        rootView.findViewById(R.id.delete).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (isFavorites) {
-                    TranslationsDataBase.resetFavorites(getActivity());
-                    for (Translation translation : ((MainActivity) getActivity()).allTranslations) {
-                        translation.setFavorite(false);
-                    }
-                } else {
-                    TranslationsDataBase.deleteAll(getActivity());
-                    ((MainActivity) getActivity()).allTranslations.clear();
-                }
-                mContainerView.removeAllViews();
-            }
-        });
+        deleteView.setOnClickListener(deleteAllListener);
         rootView.findViewById(R.id.search).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                searchFieldView.setFocusableInTouchMode(true);
                 searchFieldView.requestFocus();
-                final InputMethodManager inputMethodManager = (InputMethodManager) getActivity()
-                        .getSystemService(INPUT_METHOD_SERVICE);
                 inputMethodManager.showSoftInput(searchFieldView, InputMethodManager.SHOW_IMPLICIT);
+                searchFieldView.setCursorVisible(true);
             }
         });
         searchFieldView.setHint(isFavorites ? R.string.search_in_favorites : R.string.search_in_history);
+        searchFieldView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                Log.e("change", String.valueOf(hasFocus));
+                searchFieldView.setCursorVisible(hasFocus);
+                deleteView.setImageDrawable(getResources().getDrawable(hasFocus ?
+                        R.drawable.ic_close_black_24dp : R.drawable.ic_delete_white_24dp));
+                deleteView.setOnClickListener(hasFocus ? clearListener : deleteAllListener);
+            }
+        });
         searchFieldView.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -95,17 +94,33 @@ public class HistoryFragment extends Fragment {
 
             }
         });
-        fillContainer();
         return rootView;
     }
 
-    // Заполняет контейнер его элементами.
-    public void fillContainer() {
-        for (Translation translation : ((MainActivity) getActivity()).allTranslations) {
-            if (!isFavorites || isFavorites && translation.isFavorite())
-                addTranslation(translation, -1);
+    View.OnClickListener deleteAllListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (isFavorites) {
+                TranslationsDataBase.resetFavorites(getActivity());
+                for (Translation translation : ((MainActivity) getActivity()).allTranslations) {
+                    translation.setFavorite(false);
+                }
+            } else {
+                TranslationsDataBase.deleteAll(getActivity());
+                ((MainActivity) getActivity()).allTranslations.clear();
+            }
+            mContainerView.removeAllViews();
         }
-    }
+    };
+
+    View.OnClickListener clearListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            searchFieldView.setText("");
+            searchFieldView.clearFocus();
+            inputMethodManager.hideSoftInputFromInputMethod();
+        }
+    };
 
     // Приводит имеющийся список элементов в контейнере к новому изменённому виду.
     // Такой подход применятся, чтобы достичь анимированной перестановки элементов.
@@ -115,6 +130,9 @@ public class HistoryFragment extends Fragment {
     // проваливаться на нижнюю освободившуюся ячейку (если под нижними подразумевать элементы с
     // меньшим индексом).
     public void refreshContainer(ArrayList<Translation> newList) {
+        if (getView() == null) return;
+        View view = getView().findViewById(R.id.no_results);
+        view.setVisibility(View.INVISIBLE);
         ArrayList<Translation> realList = new ArrayList<>();
         realList.addAll(newList);
         if (isFavorites) {
@@ -157,6 +175,21 @@ public class HistoryFragment extends Fragment {
             for (int i = mContainerView.getChildCount() - 1; i >= realList.size(); i--) {
                 mContainerView.removeViewAt(i);
             }
+        }
+        // Если список пуст, то выводится специальное сообщение.
+        if (realList.size() == 0 && getView() != null) {
+            if (!isFavorites) {
+                ((TextView) view.findViewById(R.id.textView)).setText(getString(R.string.no_matches));
+                if (((MainActivity) getActivity()).allTranslations.size() == 0)
+                    ((TextView) view.findViewById(R.id.textView)).setText(getString(R.string.no_translations));
+                ((ImageView) view.findViewById(R.id.imageView)).setImageDrawable(getResources().getDrawable(
+                        R.drawable.ic_history_black_48dp));
+            } else {
+                ((TextView) view.findViewById(R.id.textView)).setText(getString(R.string.no_favorites));
+                ((ImageView) view.findViewById(R.id.imageView)).setImageDrawable(getResources().getDrawable(
+                        R.drawable.ic_mark_black_48dp));
+            }
+            view.setVisibility(View.VISIBLE);
         }
     }
 

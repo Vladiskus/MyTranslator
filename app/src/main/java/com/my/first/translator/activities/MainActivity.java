@@ -1,5 +1,6 @@
 package com.my.first.translator.activities;
 
+import android.graphics.PorterDuff;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
@@ -9,6 +10,9 @@ import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View;
+import android.widget.EditText;
 
 import com.my.first.translator.R;
 import com.my.first.translator.classes.CustomViewPager;
@@ -67,9 +71,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageSelected(int position) {
                 Fragment fragment = (Fragment) mPager.getAdapter().instantiateItem(mPager, position);
-                if (fragment instanceof  HistoryFragment) ((HistoryFragment) fragment)
-                        .refreshContainer(allTranslations);
-                else ((TranslationFragment) fragment).refreshIconsVisibility();
+                if (fragment instanceof HistoryFragment) {
+                    if (fragment.getView() != null) {
+                        EditText editText = ((EditText) fragment.getView().findViewById(R.id.editText));
+                        editText.setText("");
+                        editText.setCursorVisible(false);
+                    }
+                    ((HistoryFragment) fragment).refreshContainer(allTranslations);
+                } else ((TranslationFragment) fragment).refreshIconsVisibility();
             }
 
             @Override
@@ -103,5 +112,26 @@ public class MainActivity extends AppCompatActivity {
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putParcelableArrayList("allTranslations", allTranslations);
+    }
+
+    public static void buttonEffect(View button) {
+        button.setOnTouchListener(new View.OnTouchListener() {
+
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN: {
+                        v.getBackground().setColorFilter(0xe0f47521, PorterDuff.Mode.SRC_ATOP);
+                        v.invalidate();
+                        break;
+                    }
+                    case MotionEvent.ACTION_UP: {
+                        v.getBackground().clearColorFilter();
+                        v.invalidate();
+                        break;
+                    }
+                }
+                return false;
+            }
+        });
     }
 }

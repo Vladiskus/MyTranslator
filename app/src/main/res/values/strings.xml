@@ -12,6 +12,9 @@
     <string name="title_favorites">Избранное</string>
     <string name="search_in_history">Искать в Истории</string>
     <string name="search_in_favorites">Искать в Избранном</string>
+    <string name="no_matches">Поиск не дал результатов</string>
+    <string name="no_translations">История переводов пуста</string>
+    <string name="no_favorites">Нет переводов, добавленных в Избранное</string>
 
     // Названия файлов, где хранятся SharedPreferences
     <string name="recent_target_languages">недавние языки перевода</string>
