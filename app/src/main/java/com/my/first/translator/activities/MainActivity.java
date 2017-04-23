@@ -1,6 +1,5 @@
 package com.my.first.translator.activities;
 
-import android.graphics.PorterDuff;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
@@ -8,37 +7,25 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.MenuItem;
-import android.view.MotionEvent;
-import android.view.View;
 import android.widget.EditText;
 
 import com.my.first.translator.R;
 import com.my.first.translator.classes.CustomViewPager;
-import com.my.first.translator.classes.Translation;
-import com.my.first.translator.databases.TranslationsDataBase;
+import com.my.first.translator.classes.TranslationsManager;
 import com.my.first.translator.fragments.HistoryFragment;
 import com.my.first.translator.fragments.TranslationFragment;
-
-import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
     public CustomViewPager mPager;
     public BottomNavigationView navigationView;
-    // Переводы загружаются из базы данных при запуске приложения. В дальшейшем, для оптимизации
-    // скорости работы, всё взамодействие с предыдущими переводами производится через сформированный
-    // список истории переводов, который в дальнейшем обновляется при необходимости.
-    public ArrayList<Translation> allTranslations = new ArrayList<>();
+    private TranslationsManager translationsManager = TranslationsManager.getInstance();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        if (savedInstanceState != null)
-            allTranslations = savedInstanceState.getParcelableArrayList("allTranslations");
-        else allTranslations = TranslationsDataBase.getTranslationsFromDataBase(this);
         mPager = (CustomViewPager) findViewById(R.id.pager);
         navigationView = (BottomNavigationView) findViewById(R.id.navigation);
         mPager.setOffscreenPageLimit(2);
@@ -77,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
                         editText.setText("");
                         editText.setCursorVisible(false);
                     }
-                    ((HistoryFragment) fragment).refreshContainer(allTranslations);
+                    ((HistoryFragment) fragment).refreshContainer(translationsManager.getTranslations());
                 } else ((TranslationFragment) fragment).refreshIconsVisibility();
             }
 
@@ -106,32 +93,5 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 });
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putParcelableArrayList("allTranslations", allTranslations);
-    }
-
-    public static void buttonEffect(View button) {
-        button.setOnTouchListener(new View.OnTouchListener() {
-
-            public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN: {
-                        v.getBackground().setColorFilter(0xe0f47521, PorterDuff.Mode.SRC_ATOP);
-                        v.invalidate();
-                        break;
-                    }
-                    case MotionEvent.ACTION_UP: {
-                        v.getBackground().clearColorFilter();
-                        v.invalidate();
-                        break;
-                    }
-                }
-                return false;
-            }
-        });
     }
 }

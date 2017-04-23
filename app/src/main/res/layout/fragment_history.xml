@@ -40,8 +40,8 @@
             android:textColor="@android:color/white"
             android:textCursorDrawable="@null"
             android:cursorVisible="false"
-            android:textColorHint="@color/gray"
-            android:background="?attr/selectableItemBackground"
+            android:textColorHint="@color/colorBackground"
+            android:background="@android:color/transparent"
             android:textSize="18sp" />
 
 

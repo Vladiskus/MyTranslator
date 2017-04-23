@@ -1,12 +1,10 @@
 package com.my.first.translator.fragments;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,7 +16,7 @@ import android.widget.TextView;
 import com.my.first.translator.R;
 import com.my.first.translator.activities.MainActivity;
 import com.my.first.translator.classes.Translation;
-import com.my.first.translator.databases.TranslationsDataBase;
+import com.my.first.translator.classes.TranslationsManager;
 
 import java.util.ArrayList;
 
@@ -30,11 +28,12 @@ public class HistoryFragment extends Fragment {
     private EditText searchFieldView;
     private ImageView deleteView;
     private boolean isFavorites;
-    final InputMethodManager inputMethodManager = (InputMethodManager) getActivity()
-            .getSystemService(INPUT_METHOD_SERVICE);
+    TranslationsManager translationsManager = TranslationsManager.getInstance();
+    private ArrayList<Translation> allTranslations = new ArrayList<>();
 
-    // Возможны две вариации фрагментав зависимости от того, представляет ли он всю историю переводов
-    // или только избранные элементы.
+
+    // Возможны две вариации фрагментов в зависимости от того, представляет ли фрагмент всю историю
+    // переводов или только избранные элементы.
     public static HistoryFragment newInstance(boolean isFavorites) {
         HistoryFragment fragment = new HistoryFragment();
         Bundle args = new Bundle();
@@ -51,20 +50,24 @@ public class HistoryFragment extends Fragment {
         searchFieldView = (EditText) rootView.findViewById(R.id.editText);
         deleteView = (ImageView) rootView.findViewById(R.id.delete);
         isFavorites = getArguments().getBoolean("isFavorites");
+        allTranslations = translationsManager.getTranslations();
         deleteView.setOnClickListener(deleteAllListener);
         rootView.findViewById(R.id.search).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 searchFieldView.requestFocus();
+                InputMethodManager inputMethodManager = (InputMethodManager) getActivity()
+                        .getSystemService(INPUT_METHOD_SERVICE);
                 inputMethodManager.showSoftInput(searchFieldView, InputMethodManager.SHOW_IMPLICIT);
                 searchFieldView.setCursorVisible(true);
             }
         });
         searchFieldView.setHint(isFavorites ? R.string.search_in_favorites : R.string.search_in_history);
+        // При поиске в истории значок корзины заменяется на крестик и теперь, вместо удаления
+        // всех переводов, просто очищает поле с текстом поиска.
         searchFieldView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                Log.e("change", String.valueOf(hasFocus));
                 searchFieldView.setCursorVisible(hasFocus);
                 deleteView.setImageDrawable(getResources().getDrawable(hasFocus ?
                         R.drawable.ic_close_black_24dp : R.drawable.ic_delete_white_24dp));
@@ -81,7 +84,7 @@ public class HistoryFragment extends Fragment {
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 s = s.toString().toLowerCase();
                 ArrayList<Translation> searchList = new ArrayList<>();
-                for (Translation translation : ((MainActivity) getActivity()).allTranslations) {
+                for (Translation translation : allTranslations) {
                     if ((translation.getText().toLowerCase().contains(s) ||
                             translation.getSimpleTranslation().toLowerCase().contains(s)))
                         searchList.add(translation);
@@ -100,15 +103,8 @@ public class HistoryFragment extends Fragment {
     View.OnClickListener deleteAllListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            if (isFavorites) {
-                TranslationsDataBase.resetFavorites(getActivity());
-                for (Translation translation : ((MainActivity) getActivity()).allTranslations) {
-                    translation.setFavorite(false);
-                }
-            } else {
-                TranslationsDataBase.deleteAll(getActivity());
-                ((MainActivity) getActivity()).allTranslations.clear();
-            }
+            if (isFavorites) translationsManager.resetFavorites(getActivity());
+            else translationsManager.deleteAll(getActivity());
             mContainerView.removeAllViews();
         }
     };
@@ -118,7 +114,6 @@ public class HistoryFragment extends Fragment {
         public void onClick(View v) {
             searchFieldView.setText("");
             searchFieldView.clearFocus();
-            inputMethodManager.hideSoftInputFromInputMethod();
         }
     };
 
@@ -133,6 +128,7 @@ public class HistoryFragment extends Fragment {
         if (getView() == null) return;
         View view = getView().findViewById(R.id.no_results);
         view.setVisibility(View.INVISIBLE);
+        // Выделение избранных переводов из общего списка, если пользователь находится в папке Избранное.
         ArrayList<Translation> realList = new ArrayList<>();
         realList.addAll(newList);
         if (isFavorites) {
@@ -180,7 +176,7 @@ public class HistoryFragment extends Fragment {
         if (realList.size() == 0 && getView() != null) {
             if (!isFavorites) {
                 ((TextView) view.findViewById(R.id.textView)).setText(getString(R.string.no_matches));
-                if (((MainActivity) getActivity()).allTranslations.size() == 0)
+                if (allTranslations.size() == 0)
                     ((TextView) view.findViewById(R.id.textView)).setText(getString(R.string.no_translations));
                 ((ImageView) view.findViewById(R.id.imageView)).setImageDrawable(getResources().getDrawable(
                         R.drawable.ic_history_black_48dp));
@@ -211,28 +207,25 @@ public class HistoryFragment extends Fragment {
         mark.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                for (Translation translation : ((MainActivity) getActivity()).allTranslations) {
+                for (Translation translation : allTranslations) {
                     if (translation.getText().equals(text) && translation.getLang().equals(lang)) {
                         if (translation.isFavorite())
                             mark.setImageDrawable(getResources().getDrawable(R.drawable.ic_mark_black_24dp));
-                        translation.setFavorite(!translation.isFavorite());
-                        TranslationsDataBase.changeFavorite(getActivity(), text, lang, translation.isFavorite());
+                        translationsManager.changeFavorite(translation, getActivity());
                         break;
                     }
                 }
-                refreshContainer(((MainActivity) getActivity()).allTranslations);
+                refreshContainer(allTranslations);
             }
         });
         convertView.findViewById(R.id.close).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                TranslationsDataBase.deleteTranslation(getActivity(), lang, text);
                 ArrayList<Translation> copyList = new ArrayList<>();
-                copyList.addAll(((MainActivity) getActivity()).allTranslations);
+                copyList.addAll(allTranslations);
                 for (Translation translation : copyList) {
                     if (translation.getText().equals(text) && translation.getLang().equals(lang))
-                        ((MainActivity) getActivity()).allTranslations
-                                .remove(translation);
+                        translationsManager.deleteTranslation(translation, getActivity());
                 }
                 mContainerView.removeView(convertView);
             }

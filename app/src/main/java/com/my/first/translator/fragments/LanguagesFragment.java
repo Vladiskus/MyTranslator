@@ -16,6 +16,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.my.first.translator.R;
+import com.my.first.translator.classes.TranslationsManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,8 +28,10 @@ public class LanguagesFragment extends Fragment {
     // возможности выбора автоопределения для оригинала.
     public boolean isTarget;
     private ListView mListView;
-    private ArrayList<String> mainList = new ArrayList<>();
     private ArrayList<String> recentLanguages;
+    private ArrayList<String> mainList = new ArrayList<>();
+    String targetLanguage;
+    String sourceLanguage;
 
     // Создание фрагмента для списка языков оригинала или первода в зависимости от значения isTarget.
     public static LanguagesFragment newInstance(boolean isTarget) {
@@ -43,12 +46,14 @@ public class LanguagesFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_languages, container, false);
+        targetLanguage = ((TranslationFragment) getParentFragment()).targetLanguage;
+        sourceLanguage = ((TranslationFragment) getParentFragment()).sourceLanguage;
         isTarget = getArguments().getBoolean("is_target");
         mListView = (ListView) rootView.findViewById(R.id.list_view);
         recentLanguages = getArrayFromString(getActivity(), isTarget);
         // Последовательное добавление списков с недавними языками и всеми языками в общий список.
         mainList.addAll(recentLanguages);
-        mainList.addAll(((TranslationFragment) getParentFragment()).allLanguages.keySet());
+        mainList.addAll(TranslationsManager.getInstance().getLanguages().keySet());
         mListView.setAdapter(adapter);
         return rootView;
     }
@@ -84,25 +89,24 @@ public class LanguagesFragment extends Fragment {
                 final TextView text = ((TextView) view.findViewById(R.id.textView));
                 text.setText(getString(R.string.auto_detect));
                 // Выделить строку с выбранным языком
-                if (text.getText().toString().equals(isTarget ? ((TranslationFragment) getParentFragment())
-                        .targetLanguage : ((TranslationFragment) getParentFragment()).sourceLanguage)) {
+                if (text.getText().toString().equals(isTarget ? targetLanguage : sourceLanguage)) {
                     markSelected(view, markedViews);
                     markedViews.add(view);
                 }
                 view.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        ((TranslationFragment) getParentFragment()).sourceLanguage = text.getText().toString();
-                        ((TranslationFragment) getParentFragment()).refreshLang();
+                        sourceLanguage = text.getText().toString();
                         ((TextView) getActivity().findViewById(isTarget ? R.id.targetLanguage :
                                 R.id.sourceLanguage)).setText(text.getText().toString());
+                        ((TranslationFragment) getParentFragment()).refreshRecognizedLanguage();
                         // Вместо добавляения Автоопределения в список недавних языков, создаётся
                         // отдельная пометка, чтобы предотвратить его отображение в группе
                         // недавно использованных языков.
                         PreferenceManager.getDefaultSharedPreferences(getActivity()).edit()
                                 .putBoolean(getActivity().getString(R.string.is_auto_detect_selected),
                                         true).apply();
-                        ((TranslationFragment) getParentFragment()).sendRequest(0);
+                        ((TranslationFragment) getParentFragment()).translate();
                         getParentFragment().getChildFragmentManager().popBackStack();
                     }
                 });
@@ -122,8 +126,7 @@ public class LanguagesFragment extends Fragment {
                 text.setText(position < recentLanguages.size() + 1 ?
                         mainList.get(position - 1) : mainList.get(position - 2));
                 // Выделить строку с выбранным языком.
-                if (text.getText().toString().equals(isTarget ? ((TranslationFragment) getParentFragment())
-                        .targetLanguage : ((TranslationFragment) getParentFragment()).sourceLanguage)) {
+                if (text.getText().toString().equals(isTarget ? targetLanguage : sourceLanguage)) {
                     markSelected(view, markedViews);
                     markedViews.add(view);
                 }
@@ -146,8 +149,6 @@ public class LanguagesFragment extends Fragment {
                     @Override
                     public void onClick(View v) {
                         String language = text.getText().toString();
-                        String targetLanguage = ((TranslationFragment) getParentFragment()).targetLanguage;
-                        String sourceLanguage = ((TranslationFragment) getParentFragment()).sourceLanguage;
                         // Нельзя допустить, чтобы языки оригинала и перевода совпали.
                         if (language.equals((isTarget) ? sourceLanguage : targetLanguage)) {
                             getParentFragment().getChildFragmentManager().popBackStack();
@@ -155,17 +156,17 @@ public class LanguagesFragment extends Fragment {
                             getActivity().findViewById(R.id.exchange).performClick();
                             return;
                         }
-                        if (isTarget) ((TranslationFragment) getParentFragment()).targetLanguage = language;
-                        else ((TranslationFragment) getParentFragment()).sourceLanguage = language;
+                        if (isTarget) targetLanguage = language;
+                        else sourceLanguage = language;
                         markSelected(view, markedViews);
-                        ((TranslationFragment) getParentFragment()).refreshLang();
                         saveLanguageInString(getActivity(), isTarget, language);
                         ((TextView) getActivity().findViewById(isTarget ? R.id.targetLanguage :
                                 R.id.sourceLanguage)).setText(text.getText().toString());
+                        ((TranslationFragment) getParentFragment()).refreshRecognizedLanguage();
                         PreferenceManager.getDefaultSharedPreferences(getActivity()).edit()
                                 .putBoolean(getActivity().getString(R.string.is_auto_detect_selected),
                                         false).apply();
-                        ((TranslationFragment) getParentFragment()).sendRequest(0);
+                        ((TranslationFragment) getParentFragment()).translate();
                         getParentFragment().getChildFragmentManager().popBackStack();
                     }
                 });
@@ -178,8 +179,7 @@ public class LanguagesFragment extends Fragment {
     // если необходимо.
     private void markSelected(View view, ArrayList<View> markedViews) {
         for (View v : markedViews) {
-            String targetLanguage = ((TranslationFragment) getParentFragment()).targetLanguage;
-            String sourceLanguage = ((TranslationFragment) getParentFragment()).sourceLanguage;
+
             if (!((TextView) v.findViewById(R.id.textView)).getText().toString().equals(isTarget ?
                     targetLanguage : sourceLanguage)) {
                 v.findViewById(R.id.checkMark).setVisibility(View.INVISIBLE);
@@ -192,7 +192,7 @@ public class LanguagesFragment extends Fragment {
 
     // Запись ArrayList в SharedPreferences невозможна, поэтому для сохранения
     // списка недавних языков создаётся строка, в которой языки разделены через
-    // пробел с сохранением необходимой последовательности и лимита на количество
+    // пробел с сохранением необходимой последовательности и лимитом на количество
     // языков в 3. Пример строки: "Русский Английский Китайский"
     // Языки не должны повторяться.
     public static void saveLanguageInString(Context context, boolean isTarget, String language) {
