@@ -1,0 +1,283 @@
+package com.my.first.translator.classes;
+
+import android.content.Context;
+import android.support.v4.os.AsyncTaskCompat;
+
+import com.my.first.translator.R;
+import com.my.first.translator.databases.TranslationsDataBase;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
+
+// Синглтон класс, отвечающий за работу с данными о переводах, включая взаимодействие с
+// базой данных и сервером.
+public class TranslationsManager {
+    private static final TranslationsManager ourInstance = new TranslationsManager();
+    private String trnsKey = "trnsl.1.1.20170414T151045Z.21c6aef0ed5dc960.f8c1b78c7a0b54f132365db25c9f37e2b5e8887f";
+    private String dictKey = "dict.1.1.20170416T124709Z.d95f2d631e1a917a.ff1d6c6460c9e1f1b26a52cfe3642ddcb6d78304";
+    // Пары ключ - значение для языков вида "Русский" - "ru".
+    // Возможные направления перевода для словаря.
+    private TreeMap<String, String> languages = new TreeMap<>();
+    // Направления перевода для словаря.
+    private ArrayList<String> dictDirs = new ArrayList<>();
+    // История всех переводов.
+    private ArrayList<Translation> allTranslations = new ArrayList<>();
+
+
+    public interface TranslationListener {
+        void onFinished(Translation translation, String newSourceLanguage);
+    }
+
+    public static TranslationsManager getInstance() {
+        return ourInstance;
+    }
+
+    private TranslationsManager() {
+    }
+
+    // Переводы загружаются из базы данных при запуске приложения. В дальшейшем, для оптимизации
+    // скорости работы, всё взамодействие с предыдущими переводами производится через сформированный
+    // список истории переводов, который в дальнейшем обновляется при необходимости.
+    public void loadData(Context context, TranslationListener translationListener) {
+        if (languages.size() == 0) {
+            loadLanguages(translationListener);
+            loadDictDirs();
+            loadTranslations(context);
+        }
+    }
+
+    public TreeMap<String, String> getLanguages(){
+        return languages;
+    }
+
+    public ArrayList<Translation> getTranslations(){
+        return allTranslations;
+    }
+
+    // Осуществляется перевод. Проверяется определён ли язык оригинала, если нет, то он определяется.
+    // Далее если текст представляет из себя одно слово и направление перевода поддерживается
+    // словарём, то перевод проводится словарём, иначе переводчиком.
+    public void translate(String text, String sourceLanguage, String targetLanguage,
+                          TranslationListener translationListener, Context context) {
+        if (sourceLanguage.equals(context.getString(R.string.auto_detect)))
+            detectSourceLanguage(text, targetLanguage, translationListener, context);
+        else {
+            String lang = languages.get(sourceLanguage) + "-" + languages.get(targetLanguage);
+            if (isAlreadyInHistory(text, lang, sourceLanguage, context, translationListener)) return;
+            if (dictDirs.contains(lang) && !text.contains("+"))
+                translateWithDictionary(text, lang, sourceLanguage, context, translationListener);
+            else translateWithTranslator(text, lang, sourceLanguage, context, translationListener);
+        }
+    }
+
+    public void addTranslation(Translation translation, Context context) {
+        allTranslations.add(0, translation);
+        TranslationsDataBase.addTranslationToDataBase(context, translation);
+    }
+
+    public void deleteTranslation(Translation translation, Context context) {
+        allTranslations.remove(translation);
+        TranslationsDataBase.deleteTranslation(context, translation.getText(), translation.getLang());
+    }
+
+    public void resetFavorites(Context context) {
+        for (Translation translation : allTranslations) {
+            translation.setFavorite(false);
+        }
+        TranslationsDataBase.resetFavorites(context);
+    }
+
+    public void deleteAll(Context context) {
+        allTranslations.clear();
+        TranslationsDataBase.deleteAll(context);
+    }
+
+    public void changeFavorite(Translation translation, Context context) {
+        translation.setFavorite(!translation.isFavorite());
+        TranslationsDataBase.changeFavorite(context, translation.getText(),
+                translation.getLang(), translation.isFavorite());
+    }
+
+    private void detectSourceLanguage(final String text, final String targetLanguage,
+                                      final TranslationListener translationListener, final Context context) {
+        String urlString = "https://translate.yandex.net/api/v1.5/tr.json/detect?" +
+                "key=" + trnsKey + "&text=" + text + "&hint=ru,en";
+        final TranslationTask.TaskListener taskListener = new TranslationTask.TaskListener() {
+            @Override
+            public void onFinished(String result) {
+                try {
+                    String language = new JSONObject(result).getString("lang");
+                    if (languages.containsValue(language)) {
+                        for (Map.Entry<String, String> m : languages.entrySet()) {
+                            if (m.getValue().equals(language)) translate(text, m.getKey(),
+                                    targetLanguage, translationListener, context);
+                        }
+                    } else {
+                        translationListener.onFinished(null, null);
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        AsyncTaskCompat.executeParallel(new TranslationTask(taskListener), urlString);
+    }
+
+    private void loadLanguages(final TranslationListener translationListener) {
+        String urlString = "https://translate.yandex.net/api/v1.5/tr.json/getLangs?" +
+                "key=" + trnsKey + "&ui=" + Locale.getDefault().getDisplayLanguage();
+        TranslationTask.TaskListener taskListener = new TranslationTask.TaskListener() {
+            @Override
+            public void onFinished(String result) {
+                try {
+                    JSONObject langs = new JSONObject(result).getJSONObject("langs");
+                    for (int i = 0; i < langs.names().length(); i++) {
+                        languages.put(langs.getString(langs.names().get(i).toString()),
+                                langs.names().getString(i));
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                translationListener.onFinished(null, null);
+            }
+        };
+        AsyncTaskCompat.executeParallel(new TranslationTask(taskListener), urlString);
+    }
+
+    private void loadDictDirs() {
+        String urlString = "https://dictionary.yandex.net/api/v1/dicservice.json/" +
+                "getLangs?key=" + dictKey;
+        TranslationTask.TaskListener taskListener = new TranslationTask.TaskListener() {
+            @Override
+            public void onFinished(String result) {
+                try {
+                    JSONArray dirs = new JSONArray(result);
+                    for (int i = 0; i < dirs.length(); i++) {
+                        dictDirs.add(dirs.get(i).toString());
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        AsyncTaskCompat.executeParallel(new TranslationTask(taskListener), urlString);
+    }
+
+    private void loadTranslations(Context context) {
+        allTranslations = TranslationsDataBase.getTranslationsFromDataBase(context);
+    }
+
+    // Проверяет наличие перевода в истории. Если найден, то загружается из неё без обращения к серверу.
+    // Перевод однозначно определяется по тексту оригинала и направлению перевода.
+    private boolean isAlreadyInHistory(String text, String lang, String sourceLanguage,Context context,
+                                              TranslationListener translationListener) {
+        Translation translation = new Translation();
+        translation.setText(text);
+        translation.setLang(lang);
+        boolean inHistory = allTranslations.contains(translation);
+        if (inHistory) {
+            for (Translation t : allTranslations) {
+                if (t.equals(translation)) translation = t;
+            }
+            // Если перевод найдён, то он удаляется из списка истории и базы данных,
+            // чтобы снова быть туда добавленным последним.
+            deleteTranslation(translation, context);
+            addTranslation(translation, context);
+            translationListener.onFinished(translation, sourceLanguage);
+        }
+        return inHistory;
+    }
+
+    private void translateWithTranslator(final String text, final String lang, final String sourceLanguage,
+                                         final Context context, final TranslationListener translationListener) {
+        String urlString = "https://translate.yandex.net/api/v1.5/tr.json/translate?" +
+                "key=" + trnsKey + "&text=" + text + "&lang=" + lang;
+        TranslationTask.TaskListener taskListener = new TranslationTask.TaskListener() {
+            @Override
+            public void onFinished(String result) {
+                try {
+                    JSONArray trns = new JSONObject(result).getJSONArray("text");
+                    String fullTranslation = "<font color=\"#000000\"><big>" +
+                            trns.get(0) + "</big><br><br><br>" +
+                            "Переведено сервисом </font>" +
+                            "<a href=\"http://translate.yandex.ru/\">«Яндекс.Переводчик»</a>";
+                    String simpleTranslation = trns.get(0).toString();
+                    if (simpleTranslation.length() > 18)
+                        fullTranslation = "<br>" + fullTranslation;
+                    Translation newTranslation = new Translation(text.replaceAll("\\+", " "),
+                            simpleTranslation, fullTranslation, lang, false);
+                    addTranslation(newTranslation, context);
+                    translationListener.onFinished(newTranslation, sourceLanguage);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        AsyncTaskCompat.executeParallel(new TranslationTask(taskListener), urlString);
+    }
+
+    private void translateWithDictionary(final String text, final String lang, final String sourceLanguage,
+                                         final Context context, final TranslationListener translationListener) {
+        String urlString = "https://dictionary.yandex.net/api/v1/dicservice.json/lookup?" + "key="
+                + dictKey + "&lang=" + lang + "&text=" + text;
+        TranslationTask.TaskListener taskListener = new TranslationTask.TaskListener() {
+            @Override
+            public void onFinished(String result) {
+                try {
+                    JSONArray def = new JSONObject(result).getJSONArray("def");
+                    // Перевести с помощью переводчика, если сформировать словарную статью не удалось.
+                    if (def.length() == 0) {
+                        translateWithTranslator(text, lang, sourceLanguage, context, translationListener);
+                        return;
+                    }
+                    String spelling = "<font color=\"#000000\"><b><big>" +
+                            "" + text + "</big></b></font>";
+                    String translation = "<font color=\"#000000\"><big>";
+                    String simpleTranslation = "";
+                    String examples = "";
+                    for (int i = 0; i < def.length(); i++) {
+                        JSONArray tr = def.getJSONObject(i).getJSONArray("tr");
+                        translation += "<br>";
+                        if (def.length() > 1) translation += String.valueOf(i + 1) + ". ";
+                        // Не более 4 переводов для каждого значения.
+                        for (int j = 0; j < (tr.length() > 4 ? 4 : tr.length()); j++) {
+                            translation += tr.getJSONObject(j).getString("text") + ", ";
+                            if (j == 0 && i == 0)
+                                simpleTranslation = tr.getJSONObject(0).getString("text");
+                            try {
+                                JSONArray ex = tr.getJSONObject(j).getJSONArray("ex");
+                                for (int k = 0; k < ex.length(); k++) {
+                                    examples += "<font color=\"#000000\">" +
+                                            ex.getJSONObject(k).getString("text") + "</font> - ";
+                                    JSONArray tr2 = ex.getJSONObject(k).getJSONArray("tr");
+                                    for (int l = 0; l < tr2.length(); l++) {
+                                        examples += tr2.getJSONObject(l).getString("text") + "<br>";
+                                    }
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        translation = translation.replaceAll(", $", "");
+                    }
+                    translation += "</big></font><br><br>";
+                    String link = "<br><br><font color=\"#000000\">Реализовано с помощью сервиса </font>" +
+                            "<a href=\"https://tech.yandex.ru/dictionary/\">«Яндекс.Словарь»</a>";
+                    Translation newTranslation = new Translation(text.replaceAll("\\+", " "), simpleTranslation,
+                            spelling + translation + examples + link, lang, false);
+                    addTranslation(newTranslation, context);
+                    translationListener.onFinished(newTranslation, sourceLanguage);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        AsyncTaskCompat.executeParallel(new TranslationTask(taskListener), urlString);
+    }
+}

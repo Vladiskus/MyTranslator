@@ -12,12 +12,12 @@
     <string name="title_favorites">Избранное</string>
     <string name="search_in_history">Искать в Истории</string>
     <string name="search_in_favorites">Искать в Избранном</string>
+    <string name="no_matches">Поиск не дал результатов</string>
+    <string name="no_translations">История переводов пуста</string>
+    <string name="no_favorites">Нет переводов, добавленных в Избранное</string>
 
     // Названия файлов, где хранятся SharedPreferences
     <string name="recent_target_languages">недавние языки перевода</string>
     <string name="recent_source_languages">недавние языки текста</string>
     <string name="is_auto_detect_selected">выбран ли вариант автоопределения</string>
-
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

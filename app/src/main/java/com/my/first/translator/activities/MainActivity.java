@@ -4,39 +4,35 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 
 import com.my.first.translator.R;
 import com.my.first.translator.classes.CustomViewPager;
-import com.my.first.translator.classes.Translation;
-import com.my.first.translator.databases.TranslationsDataBase;
+import com.my.first.translator.classes.TranslationsManager;
 import com.my.first.translator.fragments.HistoryFragment;
 import com.my.first.translator.fragments.TranslationFragment;
-
-import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
     public CustomViewPager mPager;
     public BottomNavigationView navigationView;
-    // Переводы загружаются из базы данных при запуске приложения. В дальшейшем, для оптимизации
-    // скорости работы, всё взамодействие с предыдущими переводами производится через сформированный
-    // список истории переводов, который в дальнейшем обновляется при необходимости.
-    public ArrayList<Translation> allTranslations = new ArrayList<>();
+    private TranslationsManager translationsManager = TranslationsManager.getInstance();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        if (savedInstanceState != null)
-            allTranslations = savedInstanceState.getParcelableArrayList("allTranslations");
-        else allTranslations = TranslationsDataBase.getTranslationsFromDataBase(this);
         mPager = (CustomViewPager) findViewById(R.id.pager);
         navigationView = (BottomNavigationView) findViewById(R.id.navigation);
+        // Предотвращает удаление загруженных фрагментом во ViewPager, что целесообразно, тк
+        // имеются всего 3 фрагмента.
         mPager.setOffscreenPageLimit(2);
         mPager.setAdapter(new FragmentStatePagerAdapter(getSupportFragmentManager()) {
             @Override
@@ -66,10 +62,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPageSelected(int position) {
+                hideKeyboard();
                 Fragment fragment = (Fragment) mPager.getAdapter().instantiateItem(mPager, position);
-                if (fragment instanceof  HistoryFragment) ((HistoryFragment) fragment)
-                        .refreshContainer(allTranslations);
-                else ((TranslationFragment) fragment).refreshIconsVisibility();
+                if (fragment instanceof HistoryFragment) {
+                    if (fragment.getView() != null) {
+                        EditText editText = ((EditText) fragment.getView().findViewById(R.id.editText));
+                        editText.setText("");
+                    }
+                    ((HistoryFragment) fragment).refreshContainer(translationsManager.getTranslations());
+                } else ((TranslationFragment) fragment).refreshIconsVisibility();
             }
 
             @Override
@@ -82,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+
                         switch (item.getItemId()) {
                             case R.id.navigation_translator:
                                 mPager.setCurrentItem(0);
@@ -99,9 +101,30 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
+    public void hideKeyboard() {
+        View focusView = getCurrentFocus();
+        if (focusView != null) {
+            InputMethodManager imm = (InputMethodManager)
+                    getSystemService(INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(focusView.getWindowToken(), 0);
+            focusView.clearFocus();
+        }
+    }
+
+    // Вызывает popBackStack() для child fragments, чего не происходит по умолчанию при физическом
+    // нажатии кнопки назад.
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putParcelableArrayList("allTranslations", allTranslations);
+    public void onBackPressed() {
+        FragmentManager fm = getSupportFragmentManager();
+        for (Fragment frag : fm.getFragments()) {
+            if (frag.isVisible()) {
+                FragmentManager childFm = frag.getChildFragmentManager();
+                if (childFm.getBackStackEntryCount() > 0) {
+                    childFm.popBackStack();
+                    return;
+                }
+            }
+        }
+        super.onBackPressed();
     }
 }
