@@ -1,5 +1,6 @@
 package com.my.first.translator.fragments;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
@@ -12,6 +13,7 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -53,6 +55,8 @@ public class TranslationFragment extends Fragment {
     private EditText mEditTextView;
     private ProgressBar mProgressBar;
     private TranslationsManager translationsManager = TranslationsManager.getInstance();
+    // Пары ключ - значение для языков вида "Русский" - "ru".
+    // Возможные направления перевода для словаря.
     private TreeMap<String, String> allLanguages = new TreeMap<>();
     // Перевод, который будет представлен в экране с историей переводов.
     // Хранит значение sourceLanguage, сохранённое перед поворотом экрана, до момента, пока это
@@ -95,6 +99,9 @@ public class TranslationFragment extends Fragment {
             sourceLanguage = PreferenceManager.getDefaultSharedPreferences(getActivity())
                     .getString(getString(
                             R.string.recent_source_languages), getString(R.string.russian) + " ").split(" ")[0];
+            if (sourceLanguage.equals(getString(R.string.russian)))
+                recognizedLanguage = Recognizer.Language.RUSSIAN;
+            refreshIconsVisibility();
         }
         targetLanguage = PreferenceManager.getDefaultSharedPreferences(getActivity())
                 .getString(getString(
@@ -113,10 +120,11 @@ public class TranslationFragment extends Fragment {
         if (savedInstanceState != null) {
             tempSourceLanguage = savedInstanceState.getString("sourceLanguage");
             lastTranslation = savedInstanceState.getParcelable("lastTranslation");
+            allLanguages = translationsManager.getLanguages();
             if (lastTranslation != null) {
                 mTranslationView.setText(Html.fromHtml(lastTranslation.getFullTranslation()));
                 mTranslationView.setMovementMethod(LinkMovementMethod.getInstance());
-                refreshIconsVisibility();
+                refreshRecognizedLanguage();
             }
         }
         mEditTextView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -306,14 +314,15 @@ public class TranslationFragment extends Fragment {
 
                             @Override
                             public void onPartialResults(Recognizer recognizer, Recognition recognition, boolean b) {
-                                mEditTextView.setText(recognition.getBestResultText());
+                                mEditTextView.setText(recognition.getBestResultText().toLowerCase());
                             }
 
                             @Override
                             public void onRecognitionDone(Recognizer rec, Recognition recognition) {
                                 if (recognition.getBestResultText().split(" ").length <= 1)
                                     mEditTextView.setText(recognition.getBestResultText().replaceAll("[ .]", ""));
-                                else mEditTextView.setText(recognition.getBestResultText());
+                                else
+                                    mEditTextView.setText(recognition.getBestResultText().toLowerCase());
                                 translate();
                                 recognizer = null;
                             }
@@ -332,9 +341,9 @@ public class TranslationFragment extends Fragment {
     };
 
     private View.OnClickListener getOnSpeakerClickListener(final String language, final String text,
-                                                          final int defaultDrawableId,
-                                                          final int actionDrawableId,
-                                                          final ImageView speaker) {
+                                                           final int defaultDrawableId,
+                                                           final int actionDrawableId,
+                                                           final ImageView speaker) {
         return new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -365,8 +374,8 @@ public class TranslationFragment extends Fragment {
 
                     @Override
                     public void onVocalizerError(Vocalizer vocalizer, Error error) {
-                        speaker.setImageDrawable(getResources()
-                                .getDrawable(defaultDrawableId));
+                        getOnSpeakerClickListener(language, text, defaultDrawableId,
+                                actionDrawableId, speaker);
                     }
                 });
                 vocalizer.start();
@@ -458,22 +467,26 @@ public class TranslationFragment extends Fragment {
 
     // Проверяет, поддерживается ли текущий язык системой распознания голоса.
     public void refreshRecognizedLanguage() {
-        switch (allLanguages.get(sourceLanguage)) {
-            case "en":
-                recognizedLanguage = Recognizer.Language.ENGLISH;
-                break;
-            case "ru":
-                recognizedLanguage = Recognizer.Language.RUSSIAN;
-                break;
-            case "tr":
-                recognizedLanguage = Recognizer.Language.TURKISH;
-                break;
-            case "uk":
-                recognizedLanguage = Recognizer.Language.UKRAINIAN;
-                break;
-            default:
-                recognizedLanguage = null;
-                break;
+        try {
+            switch (allLanguages.get(sourceLanguage)) {
+                case "en":
+                    recognizedLanguage = Recognizer.Language.ENGLISH;
+                    break;
+                case "ru":
+                    recognizedLanguage = Recognizer.Language.RUSSIAN;
+                    break;
+                case "tr":
+                    recognizedLanguage = Recognizer.Language.TURKISH;
+                    break;
+                case "uk":
+                    recognizedLanguage = Recognizer.Language.UKRAINIAN;
+                    break;
+                default:
+                    recognizedLanguage = null;
+                    break;
+            }
+        } catch (NullPointerException e) {
+            recognizedLanguage = null;
         }
         refreshIconsVisibility();
     }

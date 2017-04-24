@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -20,6 +21,7 @@ import com.my.first.translator.classes.TranslationsManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class LanguagesFragment extends Fragment {
 
@@ -96,7 +98,7 @@ public class LanguagesFragment extends Fragment {
                 view.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        sourceLanguage = text.getText().toString();
+                        ((TranslationFragment) getParentFragment()).sourceLanguage = text.getText().toString();
                         ((TextView) getActivity().findViewById(isTarget ? R.id.targetLanguage :
                                 R.id.sourceLanguage)).setText(text.getText().toString());
                         ((TranslationFragment) getParentFragment()).refreshRecognizedLanguage();
@@ -156,8 +158,8 @@ public class LanguagesFragment extends Fragment {
                             getActivity().findViewById(R.id.exchange).performClick();
                             return;
                         }
-                        if (isTarget) targetLanguage = language;
-                        else sourceLanguage = language;
+                        if (isTarget) ((TranslationFragment) getParentFragment()).targetLanguage = language;
+                        else ((TranslationFragment) getParentFragment()).sourceLanguage = language;
                         markSelected(view, markedViews);
                         saveLanguageInString(getActivity(), isTarget, language);
                         ((TextView) getActivity().findViewById(isTarget ? R.id.targetLanguage :

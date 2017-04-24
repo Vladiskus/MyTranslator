@@ -11,6 +11,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -130,7 +131,7 @@ public class TranslationsManager {
 
     private void loadLanguages(final TranslationListener translationListener) {
         String urlString = "https://translate.yandex.net/api/v1.5/tr.json/getLangs?" +
-                "key=" + trnsKey + "&ui=ru";
+                "key=" + trnsKey + "&ui=" + Locale.getDefault().getDisplayLanguage();
         TranslationTask.TaskListener taskListener = new TranslationTask.TaskListener() {
             @Override
             public void onFinished(String result) {

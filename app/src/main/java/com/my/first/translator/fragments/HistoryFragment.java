@@ -74,38 +74,43 @@ public class HistoryFragment extends Fragment {
                 deleteView.setOnClickListener(hasFocus ? clearListener : deleteAllListener);
             }
         });
-        searchFieldView.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                s = s.toString().toLowerCase();
-                ArrayList<Translation> searchList = new ArrayList<>();
-                for (Translation translation : allTranslations) {
-                    if ((translation.getText().toLowerCase().contains(s) ||
-                            translation.getSimpleTranslation().toLowerCase().contains(s)))
-                        searchList.add(translation);
-                }
-                refreshContainer(searchList);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-
-            }
-        });
+        searchFieldView.addTextChangedListener(textWatcher);
+        refreshContainer(allTranslations);
         return rootView;
     }
+
+    TextWatcher textWatcher = new TextWatcher() {
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+        }
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+            String text = s.toString().toLowerCase();
+            // Формирует новый подходящий список и запрашивает изменение mContainerView
+            // в соответствии с ним.
+            ArrayList<Translation> searchList = new ArrayList<>();
+            for (Translation translation : allTranslations) {
+                if ((translation.getText().toLowerCase().contains(text) ||
+                        translation.getSimpleTranslation().toLowerCase().contains(text)))
+                    searchList.add(translation);
+            }
+            refreshContainer(searchList);
+        }
+
+        @Override
+        public void afterTextChanged(Editable s) {
+
+        }
+    };
 
     View.OnClickListener deleteAllListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             if (isFavorites) translationsManager.resetFavorites(getActivity());
             else translationsManager.deleteAll(getActivity());
-            mContainerView.removeAllViews();
+            refreshContainer(allTranslations);
         }
     };
 
@@ -113,7 +118,7 @@ public class HistoryFragment extends Fragment {
         @Override
         public void onClick(View v) {
             searchFieldView.setText("");
-            searchFieldView.clearFocus();
+            ((MainActivity) getActivity()).hideKeyboard();
         }
     };
 
@@ -125,9 +130,6 @@ public class HistoryFragment extends Fragment {
     // проваливаться на нижнюю освободившуюся ячейку (если под нижними подразумевать элементы с
     // меньшим индексом).
     public void refreshContainer(ArrayList<Translation> newList) {
-        if (getView() == null) return;
-        View view = getView().findViewById(R.id.no_results);
-        view.setVisibility(View.INVISIBLE);
         // Выделение избранных переводов из общего списка, если пользователь находится в папке Избранное.
         ArrayList<Translation> realList = new ArrayList<>();
         realList.addAll(newList);
@@ -151,8 +153,7 @@ public class HistoryFragment extends Fragment {
             if (!isAppropriate) {
                 if (mContainerView.getChildCount() >= realList.size()) {
                     mContainerView.removeViewAt(i);
-                    // При совпадении размеров начального и конечного списков элементов.
-                    if (mContainerView.getChildCount() + 1 == realList.size()) i--;
+                    i--;
                 } else {
                     Translation translation = realList.get(i);
                     addTranslation(translation, i);
@@ -173,6 +174,9 @@ public class HistoryFragment extends Fragment {
             }
         }
         // Если список пуст, то выводится специальное сообщение.
+        if (getView() == null) return;
+        View view = getView().findViewById(R.id.no_results);
+        view.setVisibility(View.INVISIBLE);
         if (realList.size() == 0 && getView() != null) {
             if (!isFavorites) {
                 ((TextView) view.findViewById(R.id.textView)).setText(getString(R.string.no_matches));
@@ -227,7 +231,7 @@ public class HistoryFragment extends Fragment {
                     if (translation.getText().equals(text) && translation.getLang().equals(lang))
                         translationsManager.deleteTranslation(translation, getActivity());
                 }
-                mContainerView.removeView(convertView);
+                refreshContainer(allTranslations);
             }
         });
         convertView.setOnClickListener(new View.OnClickListener() {
