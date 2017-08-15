@@ -15,6 +15,11 @@
     <string name="no_matches">No matches were found</string>
     <string name="no_translations">No translations in History</string>
     <string name="no_favorites">No translations in Favorites</string>
+    <string name="are_you_sure">Are you sure you want to delete all translations from %s?</string>
+    <string name="from_history">History</string>
+    <string name="from_favorites">Favorites</string>
+    <string name="cancel">Cancel</string>
+    <string name="yes">Yes</string>
 
     // Названия файлов, где хранятся SharedPreferences
     <string name="recent_target_languages">recent target languages</string>

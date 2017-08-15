@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         mPager = (CustomViewPager) findViewById(R.id.pager);
         navigationView = (BottomNavigationView) findViewById(R.id.navigation);
-        // Предотвращает удаление загруженных фрагментом во ViewPager, что целесообразно, тк
+        // Предотвращает удаление загруженных фрагментов во ViewPager, что целесообразно, тк
         // имеются всего 3 фрагмента.
         mPager.setOffscreenPageLimit(2);
         mPager.setAdapter(new FragmentStatePagerAdapter(getSupportFragmentManager()) {
@@ -83,7 +83,6 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-
                         switch (item.getItemId()) {
                             case R.id.navigation_translator:
                                 mPager.setCurrentItem(0);

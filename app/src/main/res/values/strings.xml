@@ -15,6 +15,11 @@
     <string name="no_matches">Поиск не дал результатов</string>
     <string name="no_translations">История переводов пуста</string>
     <string name="no_favorites">Нет переводов, добавленных в Избранное</string>
+    <string name="are_you_sure">Вы уверены, что хотите удалить все переводы из %s?</string>
+    <string name="from_history">Истории</string>
+    <string name="from_favorites">Избранного</string>
+    <string name="yes">Да</string>
+    <string name="cancel">Отмена</string>
 
     // Названия файлов, где хранятся SharedPreferences
     <string name="recent_target_languages">недавние языки перевода</string>

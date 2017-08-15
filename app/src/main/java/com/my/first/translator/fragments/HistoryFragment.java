@@ -108,9 +108,8 @@ public class HistoryFragment extends Fragment {
     View.OnClickListener deleteAllListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            if (isFavorites) translationsManager.resetFavorites(getActivity());
-            else translationsManager.deleteAll(getActivity());
-            refreshContainer(allTranslations);
+            DeleteDialogFragment.newInstance(isFavorites).show(HistoryFragment.this
+                    .getChildFragmentManager(), "DeleteDialogFragment");
         }
     };
 
