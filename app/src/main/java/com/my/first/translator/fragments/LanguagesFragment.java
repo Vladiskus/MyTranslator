@@ -17,6 +17,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.my.first.translator.R;
+import com.my.first.translator.activities.MainActivity;
 import com.my.first.translator.classes.TranslationsManager;
 
 import java.util.ArrayList;
@@ -48,6 +49,7 @@ public class LanguagesFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_languages, container, false);
+        ((MainActivity) getActivity()).hideKeyboard();
         targetLanguage = ((TranslationFragment) getParentFragment()).targetLanguage;
         sourceLanguage = ((TranslationFragment) getParentFragment()).sourceLanguage;
         isTarget = getArguments().getBoolean("is_target");

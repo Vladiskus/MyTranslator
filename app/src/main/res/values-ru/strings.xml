@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Переводчик</string>
+    <string name="text_input">Введите текст</string>
+    <string name="recently_used">Недавно использованные</string>
+    <string name="all_languages">Все языки</string>
+    <string name="auto_detect">Автоопределение</string>
+    <string name="russian">Русский</string>
+    <string name="english">Английский</string>
+    <string name="recording">Говорите</string>
+    <string name="title_translator">Переводчик</string>
+    <string name="title_history">История</string>
+    <string name="title_favorites">Избранное</string>
+    <string name="search_in_history">Искать в Истории</string>
+    <string name="search_in_favorites">Искать в Избранном</string>
+    <string name="no_matches">Поиск не дал результатов</string>
+    <string name="no_translations">История переводов пуста</string>
+    <string name="no_favorites">Нет переводов, добавленных в Избранное</string>
+    <string name="are_you_sure">Вы уверены, что хотите удалить все переводы из %s?</string>
+    <string name="from_history">Истории</string>
+    <string name="from_favorites">Избранного</string>
+    <string name="yes">Да</string>
+    <string name="cancel">Отмена</string>
+    <string name="translated_by">Переведено сервисом</string>
+    <string name="translated_by2">Реализовано с помощью сервиса</string>
+    <string name="yandex_translator">«Яндекс.Переводчик»</string>
+    <string name="yandex_dictionary">«Яндекс.Словарь»</string>
+    <string name="yandex_link1">http://translate.yandex.ru/</string>
+    <string name="yandex_link2">https://tech.yandex.ru/dictionary/</string>
+</resources>

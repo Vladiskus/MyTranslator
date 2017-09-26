@@ -1,9 +1,12 @@
 package com.my.first.translator.classes;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.support.v4.os.AsyncTaskCompat;
 
 import com.my.first.translator.R;
+import com.my.first.translator.activities.MainActivity;
 import com.my.first.translator.databases.TranslationsDataBase;
 
 import org.json.JSONArray;
@@ -11,8 +14,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 // Синглтон класс, отвечающий за работу с данными о переводах, включая взаимодействие с
@@ -23,12 +28,16 @@ public class TranslationsManager {
     private String dictKey = "dict.1.1.20170416T124709Z.d95f2d631e1a917a.ff1d6c6460c9e1f1b26a52cfe3642ddcb6d78304";
     // Пары ключ - значение для языков вида "Русский" - "ru".
     // Возможные направления перевода для словаря.
-    private TreeMap<String, String> languages = new TreeMap<>();
+    private TreeMap<String, String> languages;
     // Направления перевода для словаря.
-    private ArrayList<String> dictDirs = new ArrayList<>();
+    private ArrayList<String> dictDirs;
     // История всех переводов.
-    private ArrayList<Translation> allTranslations = new ArrayList<>();
+    private ArrayList<Translation> allTranslations;
 
+    private static final String LANGUAGES = "languages";
+    private static final String DICT_DIRS = "dict_dirs";
+
+    private boolean isReady = false;
 
     public interface TranslationListener {
         void onFinished(Translation translation, String newSourceLanguage);
@@ -39,24 +48,37 @@ public class TranslationsManager {
     }
 
     private TranslationsManager() {
+
     }
 
     // Переводы загружаются из базы данных при запуске приложения. В дальшейшем, для оптимизации
     // скорости работы, всё взамодействие с предыдущими переводами производится через сформированный
     // список истории переводов, который в дальнейшем обновляется при необходимости.
-    public void loadData(Context context, TranslationListener translationListener) {
-        if (languages.size() == 0) {
-            loadLanguages(translationListener);
-            loadDictDirs();
-            loadTranslations(context);
-        }
+    public void loadData(Context context, final TranslationListener translationListener) {
+        TranslationListener localListener = new TranslationListener() {
+            @Override
+            public void onFinished(Translation translation, String newSourceLanguage) {
+                if (isReady) {
+                    translationListener.onFinished(null, null);
+                } else isReady = true;
+            }
+        };
+        if (languages == null || dictDirs == null || allTranslations == null) {
+            refreshTranslations(context);
+            languages = (TreeMap<String, String>) TranslationsDataBase.getObjectFromDataBase(context, LANGUAGES);
+            dictDirs = (ArrayList<String>) TranslationsDataBase.getObjectFromDataBase(context, DICT_DIRS);
+            if (languages == null || dictDirs == null) {
+                loadLanguages(context, localListener);
+                loadDictDirs(context, localListener);
+            } else translationListener.onFinished(null, null);
+        } else translationListener.onFinished(null, null);
     }
 
-    public TreeMap<String, String> getLanguages(){
+    public TreeMap<String, String> getLanguages() {
         return languages;
     }
 
-    public ArrayList<Translation> getTranslations(){
+    public ArrayList<Translation> getTranslations() {
         return allTranslations;
     }
 
@@ -69,14 +91,15 @@ public class TranslationsManager {
             detectSourceLanguage(text, targetLanguage, translationListener, context);
         else {
             String lang = languages.get(sourceLanguage) + "-" + languages.get(targetLanguage);
-            if (isAlreadyInHistory(text, lang, sourceLanguage, context, translationListener)) return;
+            if (isAlreadyInHistory(text, lang, sourceLanguage, context, translationListener))
+                return;
             if (dictDirs.contains(lang) && !text.contains("+"))
                 translateWithDictionary(text, lang, sourceLanguage, context, translationListener);
             else translateWithTranslator(text, lang, sourceLanguage, context, translationListener);
         }
     }
 
-    public void addTranslation(Translation translation, Context context) {
+    private void addTranslation(Translation translation, Context context) {
         allTranslations.add(0, translation);
         TranslationsDataBase.addTranslationToDataBase(context, translation);
     }
@@ -129,38 +152,43 @@ public class TranslationsManager {
         AsyncTaskCompat.executeParallel(new TranslationTask(taskListener), urlString);
     }
 
-    private void loadLanguages(final TranslationListener translationListener) {
+    private void loadLanguages(final Context context, final TranslationListener translationListener) {
         String urlString = "https://translate.yandex.net/api/v1.5/tr.json/getLangs?" +
                 "key=" + trnsKey + "&ui=" + Locale.getDefault().getDisplayLanguage();
         TranslationTask.TaskListener taskListener = new TranslationTask.TaskListener() {
             @Override
             public void onFinished(String result) {
                 try {
+                    languages = new TreeMap<>();
                     JSONObject langs = new JSONObject(result).getJSONObject("langs");
                     for (int i = 0; i < langs.names().length(); i++) {
                         languages.put(langs.getString(langs.names().get(i).toString()),
                                 langs.names().getString(i));
                     }
+                    TranslationsDataBase.addObjectToDataBase(context, languages, LANGUAGES);
+                    translationListener.onFinished(null, null);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
-                translationListener.onFinished(null, null);
             }
         };
         AsyncTaskCompat.executeParallel(new TranslationTask(taskListener), urlString);
     }
 
-    private void loadDictDirs() {
+    private void loadDictDirs(final Context context, final TranslationListener translationListener) {
         String urlString = "https://dictionary.yandex.net/api/v1/dicservice.json/" +
                 "getLangs?key=" + dictKey;
         TranslationTask.TaskListener taskListener = new TranslationTask.TaskListener() {
             @Override
             public void onFinished(String result) {
                 try {
+                    dictDirs = new ArrayList<>();
                     JSONArray dirs = new JSONArray(result);
                     for (int i = 0; i < dirs.length(); i++) {
                         dictDirs.add(dirs.get(i).toString());
                     }
+                    TranslationsDataBase.addObjectToDataBase(context, dictDirs, DICT_DIRS);
+                    translationListener.onFinished(null, null);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -169,22 +197,23 @@ public class TranslationsManager {
         AsyncTaskCompat.executeParallel(new TranslationTask(taskListener), urlString);
     }
 
-    private void loadTranslations(Context context) {
+    public void refreshTranslations(Context context) {
         allTranslations = TranslationsDataBase.getTranslationsFromDataBase(context);
     }
 
     // Проверяет наличие перевода в истории. Если найден, то загружается из неё без обращения к серверу.
     // Перевод однозначно определяется по тексту оригинала и направлению перевода.
-    private boolean isAlreadyInHistory(String text, String lang, String sourceLanguage,Context context,
-                                              TranslationListener translationListener) {
+    private boolean isAlreadyInHistory(String text, String lang, String sourceLanguage, Context context,
+                                       TranslationListener translationListener) {
         Translation translation = new Translation();
-        translation.setText(text);
+        translation.setText(text.replaceAll("\\+", " "));
         translation.setLang(lang);
         boolean inHistory = allTranslations.contains(translation);
         if (inHistory) {
             for (Translation t : allTranslations) {
                 if (t.equals(translation)) translation = t;
             }
+            translation.setFavorite(false);
             // Если перевод найдён, то он удаляется из списка истории и базы данных,
             // чтобы снова быть туда добавленным последним.
             deleteTranslation(translation, context);
@@ -205,8 +234,9 @@ public class TranslationsManager {
                     JSONArray trns = new JSONObject(result).getJSONArray("text");
                     String fullTranslation = "<font color=\"#000000\"><big>" +
                             trns.get(0) + "</big><br><br><br>" +
-                            "Переведено сервисом </font>" +
-                            "<a href=\"http://translate.yandex.ru/\">«Яндекс.Переводчик»</a>";
+                            context.getString(R.string.translated_by) + " </font>" +
+                            "<a href=\"" + context.getString(R.string.yandex_link1) + "\">" + context
+                            .getString(R.string.yandex_translator) + "</a>";
                     String simpleTranslation = trns.get(0).toString();
                     if (simpleTranslation.length() > 18)
                         fullTranslation = "<br>" + fullTranslation;
@@ -267,8 +297,10 @@ public class TranslationsManager {
                         translation = translation.replaceAll(", $", "");
                     }
                     translation += "</big></font><br><br>";
-                    String link = "<br><br><font color=\"#000000\">Реализовано с помощью сервиса </font>" +
-                            "<a href=\"https://tech.yandex.ru/dictionary/\">«Яндекс.Словарь»</a>";
+                    String link = "<br><br><font color=\"#000000\">" + context
+                            .getString(R.string.translated_by2) + " </font>" +
+                            "<a href=\"" + context.getString(R.string.yandex_link2) + "\">" + context
+                            .getString(R.string.yandex_dictionary) + "</a>";
                     Translation newTranslation = new Translation(text.replaceAll("\\+", " "), simpleTranslation,
                             spelling + translation + examples + link, lang, false);
                     addTranslation(newTranslation, context);

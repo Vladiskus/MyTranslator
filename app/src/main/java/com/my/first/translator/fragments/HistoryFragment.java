@@ -212,7 +212,7 @@ public class HistoryFragment extends Fragment {
             public void onClick(View v) {
                 for (Translation translation : allTranslations) {
                     if (translation.getText().equals(text) && translation.getLang().equals(lang)) {
-                        if (translation.isFavorite())
+                        if (isFavorite)
                             mark.setImageDrawable(getResources().getDrawable(R.drawable.ic_mark_black_24dp));
                         translationsManager.changeFavorite(translation, getActivity());
                         break;
@@ -227,8 +227,11 @@ public class HistoryFragment extends Fragment {
                 ArrayList<Translation> copyList = new ArrayList<>();
                 copyList.addAll(allTranslations);
                 for (Translation translation : copyList) {
-                    if (translation.getText().equals(text) && translation.getLang().equals(lang))
-                        translationsManager.deleteTranslation(translation, getActivity());
+                    if (translation.getText().equals(text) && translation.getLang().equals(lang)) {
+                        if (isFavorites) translationsManager.changeFavorite(translation, getActivity());
+                        else translationsManager.deleteTranslation(translation, getActivity());
+                        break;
+                    }
                 }
                 refreshContainer(allTranslations);
             }
