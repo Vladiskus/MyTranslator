@@ -3,6 +3,7 @@ package com.my.first.translator.fragments;
 import android.content.Context;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.text.Editable;
@@ -110,17 +111,10 @@ public class TranslationFragment extends Fragment {
         targetLanguageView.setText(targetLanguage);
         // После загрузки языков с помошью полученных пар ключ-значение необходимо будет проверить
         // поддерживает ли текущий язык голосовой ввод.
-        translationsManager.loadData(getActivity(), new TranslationsManager.TranslationListener() {
-            @Override
-            public void onFinished(Translation translation, String newSourceLanguage) {
-                allLanguages = translationsManager.getLanguages();
-                refreshRecognizedLanguage();
-            }
-        });
+        allLanguages = translationsManager.getLanguages();
         if (savedInstanceState != null) {
             tempSourceLanguage = savedInstanceState.getString("sourceLanguage");
             lastTranslation = savedInstanceState.getParcelable("lastTranslation");
-            allLanguages = translationsManager.getLanguages();
             if (lastTranslation != null) {
                 mTranslationView.setText(Html.fromHtml(lastTranslation.getFullTranslation()));
                 mTranslationView.setMovementMethod(LinkMovementMethod.getInstance());
@@ -230,6 +224,12 @@ public class TranslationFragment extends Fragment {
     }
 
     @Override
+    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        refreshRecognizedLanguage();
+    }
+
+    @Override
     public void onSaveInstanceState(Bundle outState) {
         outState.putString("sourceLanguage", sourceLanguage);
         outState.putParcelable("lastTranslation", lastTranslation);
@@ -298,6 +298,7 @@ public class TranslationFragment extends Fragment {
 
                             @Override
                             public void onRecordingDone(Recognizer recognizer) {
+                                if (getActivity() == null) return;
                                 microphoneView.setImageDrawable(getResources()
                                         .getDrawable(R.drawable.ic_microphone_black_24dp));
                             }
@@ -314,15 +315,19 @@ public class TranslationFragment extends Fragment {
 
                             @Override
                             public void onPartialResults(Recognizer recognizer, Recognition recognition, boolean b) {
-                                mEditTextView.setText(recognition.getBestResultText().toLowerCase());
+                                if (getActivity() == null) return;
+                                mEditTextView.setText(recognition.getBestResultText().toLowerCase()
+                                        .replaceAll("(?m)^i ", "I ").replaceAll(" i ", " I "));
                             }
 
                             @Override
                             public void onRecognitionDone(Recognizer rec, Recognition recognition) {
+                                if (getActivity() == null) return;
+                                String text = recognition.getBestResultText().toLowerCase()
+                                        .replaceAll("(?m)^i ", "I ").replaceAll(" i ", " I ");
                                 if (recognition.getBestResultText().split(" ").length <= 1)
-                                    mEditTextView.setText(recognition.getBestResultText().replaceAll("[ .]", ""));
-                                else
-                                    mEditTextView.setText(recognition.getBestResultText().toLowerCase());
+                                    mEditTextView.setText(text.replaceAll("[ .]", ""));
+                                else mEditTextView.setText(text);
                                 translate();
                                 recognizer = null;
                             }
@@ -392,6 +397,7 @@ public class TranslationFragment extends Fragment {
         TranslationsManager.TranslationListener listener = new TranslationsManager.TranslationListener() {
             @Override
             public void onFinished(Translation translation, String newSourceLanguage) {
+                if (getActivity() == null) return;
                 if (translation == null) {
                     translationInProgress = false;
                     refreshIconsVisibility();

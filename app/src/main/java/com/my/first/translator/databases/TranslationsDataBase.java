@@ -9,6 +9,12 @@ import android.provider.BaseColumns;
 
 import com.my.first.translator.classes.Translation;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 
 public class TranslationsDataBase extends SQLiteOpenHelper implements BaseColumns {
@@ -19,6 +25,7 @@ public class TranslationsDataBase extends SQLiteOpenHelper implements BaseColumn
 
     private static final int DATABASE_VERSION = 1;
     private static final String TABLE_NAME = "translations_table";
+    private static final String TABLE_NAME2 = "auxiliary_table";
 
     private static final String TRANSLATION_TEXT = "text";
     private static final String TRANSLATION_SIMPLE_TRANSLATION = "simple_translation";
@@ -35,9 +42,19 @@ public class TranslationsDataBase extends SQLiteOpenHelper implements BaseColumn
             + TRANSLATION_LANG + " TEXT, "
             + TRANSLATION_IS_FAVORITE + " INTEGER);";
 
+    private static final String AUXILIARY_NAME = "name";
+    private static final String AUXILIARY_OBJECT = "object";
+
+    private static final String SQL_CREATE_ENTRIES2 = "CREATE TABLE "
+            + TABLE_NAME2 + " ("
+            + _ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+            + AUXILIARY_NAME + " TEXT, "
+            + AUXILIARY_OBJECT + " BLOB);";
+
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(SQL_CREATE_ENTRIES);
+        db.execSQL(SQL_CREATE_ENTRIES2);
     }
 
     private TranslationsDataBase(Context context) {
@@ -129,5 +146,39 @@ public class TranslationsDataBase extends SQLiteOpenHelper implements BaseColumn
         }
         cursor.close();
         return translations;
+    }
+
+    public static void addObjectToDataBase(Context context, Serializable object, String name) {
+        SQLiteDatabase sqdb = TranslationsDataBase.getInstance(context).getMyWritableDatabase();
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+            objectOutputStream.writeObject(object);
+            ContentValues cv = new ContentValues();
+            cv.put(AUXILIARY_NAME, name);
+            cv.put(AUXILIARY_OBJECT, byteArrayOutputStream.toByteArray());
+            sqdb.insert(TABLE_NAME2, null, cv);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static Serializable getObjectFromDataBase(Context context, String name) {
+        SQLiteDatabase sqdb = getInstance(context).getMyWritableDatabase();
+        Cursor cursor = sqdb.query(TABLE_NAME2, new String[]{AUXILIARY_OBJECT}, AUXILIARY_NAME + " =?",
+                new String[]{name}, null, null, null);
+        Serializable object = null;
+        if (cursor.moveToFirst()) {
+            try {
+                ByteArrayInputStream inputStream = new ByteArrayInputStream(cursor
+                        .getBlob(cursor.getColumnIndex(AUXILIARY_OBJECT)));
+                ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
+                object = (Serializable) objectInputStream.readObject();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        cursor.close();
+        return object;
     }
 }

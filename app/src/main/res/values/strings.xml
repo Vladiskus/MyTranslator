@@ -1,23 +1,34 @@
 <resources>
-    <string name="app_name">Переводчик</string>
-    <string name="text_input">Введите текст</string>
-    <string name="recently_used">Недавно использованные</string>
-    <string name="all_languages">Все языки</string>
-    <string name="auto_detect">Автоопределение</string>
-    <string name="russian">Русский</string>
-    <string name="english">Английский</string>
-    <string name="recording">Говорите</string>
-    <string name="title_translator">Переводчик</string>
-    <string name="title_history">История</string>
-    <string name="title_favorites">Избранное</string>
-    <string name="search_in_history">Искать в Истории</string>
-    <string name="search_in_favorites">Искать в Избранном</string>
-    <string name="no_matches">Поиск не дал результатов</string>
-    <string name="no_translations">История переводов пуста</string>
-    <string name="no_favorites">Нет переводов, добавленных в Избранное</string>
+    <string name="app_name">Translator</string>
+    <string name="text_input">Type text</string>
+    <string name="recently_used">Recently used</string>
+    <string name="all_languages">All languages</string>
+    <string name="auto_detect">Auto-detection</string>
+    <string name="russian">Russian</string>
+    <string name="english">English</string>
+    <string name="recording">Speak now</string>
+    <string name="title_translator">Translator</string>
+    <string name="title_history">History</string>
+    <string name="title_favorites">Favorites</string>
+    <string name="search_in_history">Search in History</string>
+    <string name="search_in_favorites">Search in Favorites</string>
+    <string name="no_matches">No matches were found</string>
+    <string name="no_translations">No translations in History</string>
+    <string name="no_favorites">No translations in Favorites</string>
+    <string name="are_you_sure">Are you sure you want to delete all translations from %s?</string>
+    <string name="from_history">History</string>
+    <string name="from_favorites">Favorites</string>
+    <string name="cancel">Cancel</string>
+    <string name="yes">Yes</string>
+    <string name="translated_by">Powered by</string>
+    <string name="translated_by2">Powered by</string>
+    <string name="yandex_dictionary">«Yandex.Dictionary»</string>
+    <string name="yandex_translator">«Yandex.Translate»</string>
+    <string name="yandex_link1">http://translate.yandex.com/</string>
+    <string name="yandex_link2">https://tech.yandex.com/dictionary/</string>
 
     // Названия файлов, где хранятся SharedPreferences
-    <string name="recent_target_languages">недавние языки перевода</string>
-    <string name="recent_source_languages">недавние языки текста</string>
-    <string name="is_auto_detect_selected">выбран ли вариант автоопределения</string>
+    <string name="recent_target_languages" translatable="false">recent target languages</string>
+    <string name="recent_source_languages" translatable="false">recent source languages</string>
+    <string name="is_auto_detect_selected" translatable="false">is auto detect selected</string>
 </resources>

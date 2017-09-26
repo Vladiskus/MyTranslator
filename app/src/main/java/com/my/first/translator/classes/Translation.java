@@ -103,9 +103,7 @@ public class Translation implements Parcelable {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-
         Translation that = (Translation) o;
-
         if (!text.equals(that.text)) return false;
         return lang.equals(that.lang);
 
