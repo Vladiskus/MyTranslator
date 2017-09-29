@@ -122,7 +122,7 @@ public class TranslationsDataBase extends SQLiteOpenHelper implements BaseColumn
     }
 
     public static void deleteAll(Context context) {
-        SQLiteDatabase sqdb = TranslationsDataBase.getInstance(context).getMyWritableDatabase();
+        SQLiteDatabase sqdb = getInstance(context).getMyWritableDatabase();
         sqdb.delete(TABLE_NAME, null, null);
     }
 
@@ -180,5 +180,10 @@ public class TranslationsDataBase extends SQLiteOpenHelper implements BaseColumn
         }
         cursor.close();
         return object;
+    }
+
+    public static void deleteObjects(Context context) {
+        SQLiteDatabase sqdb = getInstance(context).getMyWritableDatabase();
+        sqdb.delete(TABLE_NAME2, null, null);
     }
 }

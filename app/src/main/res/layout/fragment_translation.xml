@@ -22,7 +22,6 @@
             android:layout_toLeftOf="@+id/exchange"
             android:layout_toStartOf="@+id/exchange"
             android:gravity="center|end"
-            android:text="TextView"
             android:background="?selectableItemBackgroundBorderless"
             android:textColor="@android:color/white"
             android:textSize="17sp" />
@@ -41,7 +40,6 @@
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:gravity="center|start"
-            android:text="TextView"
             android:layout_toRightOf="@+id/exchange"
             android:layout_toEndOf="@+id/exchange"
             android:background="?selectableItemBackgroundBorderless"
@@ -58,6 +56,9 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:id="@+id/editLayout"
+            android:descendantFocusability="beforeDescendants"
+            android:focusableInTouchMode="true"
             android:orientation="vertical">
 
             <EditText

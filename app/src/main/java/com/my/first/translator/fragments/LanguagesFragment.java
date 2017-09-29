@@ -6,6 +6,7 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -93,7 +94,8 @@ public class LanguagesFragment extends Fragment {
                 final TextView text = ((TextView) view.findViewById(R.id.textView));
                 text.setText(getString(R.string.auto_detect));
                 // Выделить строку с выбранным языком
-                if (text.getText().toString().equals(isTarget ? targetLanguage : sourceLanguage)) {
+                if (text.getText().toString().equals(isTarget ? targetLanguage : ((TextView)
+                        getParentFragment().getView().findViewById(R.id.sourceLanguage)).getText())) {
                     markSelected(view, markedViews);
                     markedViews.add(view);
                 }
@@ -130,7 +132,9 @@ public class LanguagesFragment extends Fragment {
                 text.setText(position < recentLanguages.size() + 1 ?
                         mainList.get(position - 1) : mainList.get(position - 2));
                 // Выделить строку с выбранным языком.
-                if (text.getText().toString().equals(isTarget ? targetLanguage : sourceLanguage)) {
+                if (text.getText().toString().equals(isTarget ? targetLanguage : sourceLanguage)
+                        && !((TextView) getParentFragment().getView().findViewById(R.id.sourceLanguage))
+                        .getText().equals(getActivity().getString(R.string.auto_detect))) {
                     markSelected(view, markedViews);
                     markedViews.add(view);
                 }
@@ -160,7 +164,8 @@ public class LanguagesFragment extends Fragment {
                             getActivity().findViewById(R.id.exchange).performClick();
                             return;
                         }
-                        if (isTarget) ((TranslationFragment) getParentFragment()).targetLanguage = language;
+                        if (isTarget)
+                            ((TranslationFragment) getParentFragment()).targetLanguage = language;
                         else ((TranslationFragment) getParentFragment()).sourceLanguage = language;
                         markSelected(view, markedViews);
                         saveLanguageInString(getActivity(), isTarget, language);

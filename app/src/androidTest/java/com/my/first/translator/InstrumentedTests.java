@@ -69,38 +69,38 @@ public class InstrumentedTests {
                         new TranslationsManager.TranslationListener() {
                             @Override
                             public void onFinished(Translation translation, String newSourceLanguage) {
-                                assertTrue(translationsManager.getTranslations().size() == 1);
+                                assertTrue(translationsManager.getTranslations(null).size() == 1);
                                 translationsManager.changeFavorite(translation, context);
                                 assertTrue(translation.isFavorite());
                                 translationsManager.refreshTranslations(context);
-                                assertTrue(translationsManager.getTranslations().get(0).isFavorite());
+                                assertTrue(translationsManager.getTranslations(null).get(0).isFavorite());
                                 translationsManager.resetFavorites(context);
-                                assertTrue(!translationsManager.getTranslations().get(0).isFavorite());
+                                assertTrue(!translationsManager.getTranslations(null).get(0).isFavorite());
                                 translationsManager.refreshTranslations(context);
-                                assertTrue(!translationsManager.getTranslations().get(0).isFavorite());
-                                assertTrue(translationsManager.getTranslations().size() == 1);
+                                assertTrue(!translationsManager.getTranslations(null).get(0).isFavorite());
+                                assertTrue(translationsManager.getTranslations(null).size() == 1);
                                 translationsManager.translate("проверка", "Russian", "English",
                                         new TranslationsManager.TranslationListener() {
                                             @Override
                                             public void onFinished(Translation translation, String newSourceLanguage) {
-                                                assertTrue(translationsManager.getTranslations().size() == 1);
+                                                assertTrue(translationsManager.getTranslations(null).size() == 1);
                                                 translationsManager.refreshTranslations(context);
-                                                assertTrue(translationsManager.getTranslations().size() == 1);
+                                                assertTrue(translationsManager.getTranslations(null).size() == 1);
                                                 translationsManager.translate("second check", context.getString(R.string.auto_detect),
                                                         "Arabic", new TranslationsManager.TranslationListener() {
                                                             @Override
                                                             public void onFinished(Translation translation, String newSourceLanguage) {
-                                                                assertTrue(translationsManager.getTranslations().size() == 2);
+                                                                assertTrue(translationsManager.getTranslations(null).size() == 2);
                                                                 translationsManager.refreshTranslations(context);
-                                                                assertTrue(translationsManager.getTranslations().size() == 2);
+                                                                assertTrue(translationsManager.getTranslations(null).size() == 2);
                                                                 translationsManager.deleteTranslation(translation, context);
-                                                                assertTrue(translationsManager.getTranslations().size() == 1);
+                                                                assertTrue(translationsManager.getTranslations(null).size() == 1);
                                                                 translationsManager.refreshTranslations(context);
-                                                                assertTrue(translationsManager.getTranslations().size() == 1);
+                                                                assertTrue(translationsManager.getTranslations(null).size() == 1);
                                                                 translationsManager.deleteAll(context);
-                                                                assertTrue(translationsManager.getTranslations().size() == 0);
+                                                                assertTrue(translationsManager.getTranslations(null).size() == 0);
                                                                 translationsManager.refreshTranslations(context);
-                                                                assertTrue(translationsManager.getTranslations().size() == 0);
+                                                                assertTrue(translationsManager.getTranslations(null).size() == 0);
                                                             }
                                                         }, context);
                                             }

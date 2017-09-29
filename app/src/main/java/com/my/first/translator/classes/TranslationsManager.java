@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.support.v4.os.AsyncTaskCompat;
+import android.util.Log;
 
 import com.my.first.translator.R;
 import com.my.first.translator.activities.MainActivity;
@@ -60,6 +61,7 @@ public class TranslationsManager {
             public void onFinished(Translation translation, String newSourceLanguage) {
                 if (isReady) {
                     translationListener.onFinished(null, null);
+                    isReady = false;
                 } else isReady = true;
             }
         };
@@ -74,11 +76,24 @@ public class TranslationsManager {
         } else translationListener.onFinished(null, null);
     }
 
+    public void deleteData(Context context) {
+        TranslationsDataBase.deleteObjects(context);
+        languages = null;
+        dictDirs = null;
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putString(context.getString(R.string.recent_target_languages),
+                        context.getString(R.string.english) + " ").commit();
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putString(context.getString(R.string.recent_source_languages),
+                        context.getString(R.string.russian) + " ").commit();
+    }
+
     public TreeMap<String, String> getLanguages() {
         return languages;
     }
 
-    public ArrayList<Translation> getTranslations() {
+    public ArrayList<Translation> getTranslations(Context context) {
+        if (allTranslations == null && context != null) refreshTranslations(context);
         return allTranslations;
     }
 
@@ -154,7 +169,7 @@ public class TranslationsManager {
 
     private void loadLanguages(final Context context, final TranslationListener translationListener) {
         String urlString = "https://translate.yandex.net/api/v1.5/tr.json/getLangs?" +
-                "key=" + trnsKey + "&ui=" + Locale.getDefault().getDisplayLanguage();
+                "key=" + trnsKey + "&ui=" + Locale.getDefault().getLanguage();
         TranslationTask.TaskListener taskListener = new TranslationTask.TaskListener() {
             @Override
             public void onFinished(String result) {
@@ -166,6 +181,9 @@ public class TranslationsManager {
                                 langs.names().getString(i));
                     }
                     TranslationsDataBase.addObjectToDataBase(context, languages, LANGUAGES);
+                    PreferenceManager.getDefaultSharedPreferences(context).edit()
+                            .putString(context.getString(R.string.current_language),
+                                    Locale.getDefault().getLanguage()).apply();
                     translationListener.onFinished(null, null);
                 } catch (JSONException e) {
                     e.printStackTrace();

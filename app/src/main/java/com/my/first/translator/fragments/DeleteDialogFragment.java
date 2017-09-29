@@ -31,7 +31,7 @@ public class DeleteDialogFragment extends DialogFragment {
                         if (isFavorites) TranslationsManager.getInstance().resetFavorites(getActivity());
                         else TranslationsManager.getInstance().deleteAll(getActivity());
                         ((HistoryFragment) DeleteDialogFragment.this.getParentFragment())
-                                .refreshContainer(TranslationsManager.getInstance().getTranslations());
+                                .refreshContainer(TranslationsManager.getInstance().getTranslations(null));
                     }
                 })
                 .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {

@@ -31,4 +31,5 @@
     <string name="recent_target_languages" translatable="false">recent target languages</string>
     <string name="recent_source_languages" translatable="false">recent source languages</string>
     <string name="is_auto_detect_selected" translatable="false">is auto detect selected</string>
+    <string name="current_language" translatable="false">current language</string>
 </resources>

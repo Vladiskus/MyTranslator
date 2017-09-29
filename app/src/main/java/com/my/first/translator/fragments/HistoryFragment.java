@@ -50,7 +50,7 @@ public class HistoryFragment extends Fragment {
         searchFieldView = (EditText) rootView.findViewById(R.id.editText);
         deleteView = (ImageView) rootView.findViewById(R.id.delete);
         isFavorites = getArguments().getBoolean("isFavorites");
-        allTranslations = translationsManager.getTranslations();
+        allTranslations = translationsManager.getTranslations(getActivity());
         deleteView.setOnClickListener(deleteAllListener);
         rootView.findViewById(R.id.search).setOnClickListener(new View.OnClickListener() {
             @Override

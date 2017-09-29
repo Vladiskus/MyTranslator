@@ -25,6 +25,7 @@ import com.my.first.translator.R;
 import com.my.first.translator.classes.Translation;
 import com.my.first.translator.classes.TranslationsManager;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -76,157 +77,161 @@ public class TranslationFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.fragment_translation, container, false);
+                             final Bundle savedInstanceState) {
+        final View rootView = inflater.inflate(R.layout.fragment_translation, container, false);
         SpeechKit.getInstance().configure(getActivity().getApplicationContext(), speechKey);
-        mTranslationView = (TextView) rootView.findViewById(R.id.translation);
-        sourceLanguageView = (TextView) rootView.findViewById(R.id.sourceLanguage);
-        targetLanguageView = (TextView) rootView.findViewById(R.id.targetLanguage);
-        clearView = (ImageButton) rootView.findViewById(R.id.close);
-        exchangeView = (ImageButton) rootView.findViewById(R.id.exchange);
-        upperSpeakerView = (ImageView) rootView.findViewById(R.id.speaker);
-        lowerSpeakerView = (ImageView) rootView.findViewById(R.id.speaker2);
-        microphoneView = (ImageView) rootView.findViewById(R.id.microphone);
-        markView = (ImageView) rootView.findViewById(R.id.mark);
-        mEditTextView = (EditText) rootView.findViewById(R.id.editText);
-        mProgressBar = (ProgressBar) rootView.findViewById(R.id.progressBar);
-        // Языки оригинала и перевода извлекаются из списков с недавними языками, которые
-        // хранятся в виде строк. Текущий язык является первым словом в них.
-        // Есди выбрано Автоопределение, то информация об этом хранится в отдельном файле SharedPreferences.
-        if (PreferenceManager.getDefaultSharedPreferences(getActivity()).getBoolean(getString(
-                R.string.is_auto_detect_selected), false)) {
-            sourceLanguage = getString(R.string.auto_detect);
-        } else {
-            sourceLanguage = PreferenceManager.getDefaultSharedPreferences(getActivity())
-                    .getString(getString(
-                            R.string.recent_source_languages), getString(R.string.russian) + " ").split(" ")[0];
-            if (sourceLanguage.equals(getString(R.string.russian)))
-                recognizedLanguage = Recognizer.Language.RUSSIAN;
-            refreshIconsVisibility();
+        if (!Locale.getDefault().getLanguage().equals(PreferenceManager
+                .getDefaultSharedPreferences(getActivity()).getString(getString(R.string.current_language), ""))) {
+            translationsManager.deleteData(getActivity());
         }
-        targetLanguage = PreferenceManager.getDefaultSharedPreferences(getActivity())
-                .getString(getString(
-                        R.string.recent_target_languages), getString(R.string.english) + " ").split(" ")[0];
-        sourceLanguageView.setText(sourceLanguage);
-        targetLanguageView.setText(targetLanguage);
-        // После загрузки языков с помошью полученных пар ключ-значение необходимо будет проверить
-        // поддерживает ли текущий язык голосовой ввод.
-        allLanguages = translationsManager.getLanguages();
-        if (savedInstanceState != null) {
-            tempSourceLanguage = savedInstanceState.getString("sourceLanguage");
-            lastTranslation = savedInstanceState.getParcelable("lastTranslation");
-            if (lastTranslation != null) {
-                mTranslationView.setText(Html.fromHtml(lastTranslation.getFullTranslation()));
-                mTranslationView.setMovementMethod(LinkMovementMethod.getInstance());
-                refreshRecognizedLanguage();
-            }
-        }
-        mEditTextView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        translationsManager.loadData(getActivity(), new TranslationsManager.TranslationListener() {
             @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                translate();
-                return false;
-            }
-        });
-        mEditTextView.addTextChangedListener(textWatcher);
-        mEditTextView.setHorizontallyScrolling(false);
-        mEditTextView.setMaxLines(Integer.MAX_VALUE);
-        mEditTextView.setPadding(20, 10, 10, 70);
-        clearView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mEditTextView.setText("");
-                lastTranslation = null;
-                refreshIconsVisibility();
-            }
-        });
-        markView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                translationsManager.changeFavorite(lastTranslation, getActivity());
-                refreshIconsVisibility();
-            }
-        });
-        microphoneView.setOnClickListener(micOnClickListener);
-        // При изменении типа LanguagesFragment, он удаляется и создаётся заново, вместо простой замены,
-        // чтобы сохранить правильный (очевидный для пользователя) порядок в стеке переходов.
-        sourceLanguageView.setOnClickListener(new View.OnClickListener()
-
-        {
-            @Override
-            public void onClick(View v) {
-                Fragment fragment = getChildFragmentManager().findFragmentById(R.id.container);
-                if (fragment == null || !fragment.isAdded() || ((LanguagesFragment) fragment).isTarget) {
-                    getChildFragmentManager().popBackStack();
-                    getChildFragmentManager().beginTransaction().setCustomAnimations(android.R.anim.fade_in,
-                            android.R.anim.fade_out, android.R.anim.fade_in, android.R.anim.fade_out)
-                            .add(R.id.container, LanguagesFragment.newInstance(false))
-                            .addToBackStack(null).commit();
-                } else getChildFragmentManager().popBackStack();
-            }
-        });
-        targetLanguageView.setOnClickListener(new View.OnClickListener()
-
-        {
-            @Override
-            public void onClick(View v) {
-                Fragment fragment = getChildFragmentManager().findFragmentById(R.id.container);
-                if (fragment == null || !fragment.isAdded() || !((LanguagesFragment) fragment).isTarget) {
-                    getChildFragmentManager().popBackStack();
-                    getChildFragmentManager().beginTransaction().setCustomAnimations(android.R.anim.fade_in,
-                            android.R.anim.fade_out, android.R.anim.fade_in, android.R.anim.fade_out)
-                            .add(R.id.container, LanguagesFragment.newInstance(true))
-                            .addToBackStack(null).commit();
-                } else getChildFragmentManager().popBackStack();
-            }
-        });
-        exchangeView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // Автоопредение не может быть выбрано для языка перевода, поэтому вместо него
-                // выбирается уже определённый язык или язык по умолчанию, при перестановке языков
-                // оригнала и перевода.
-                if (sourceLanguage.equals(getString(R.string.auto_detect))) {
-                    sourceLanguage = targetLanguage.equals(getString(R.string.english)) ?
-                            getString(R.string.russian) : getString(R.string.english);
+            public void onFinished(Translation translation, String newSourceLanguage) {
+                mTranslationView = (TextView) rootView.findViewById(R.id.translation);
+                sourceLanguageView = (TextView) rootView.findViewById(R.id.sourceLanguage);
+                targetLanguageView = (TextView) rootView.findViewById(R.id.targetLanguage);
+                clearView = (ImageButton) rootView.findViewById(R.id.close);
+                exchangeView = (ImageButton) rootView.findViewById(R.id.exchange);
+                upperSpeakerView = (ImageView) rootView.findViewById(R.id.speaker);
+                lowerSpeakerView = (ImageView) rootView.findViewById(R.id.speaker2);
+                microphoneView = (ImageView) rootView.findViewById(R.id.microphone);
+                markView = (ImageView) rootView.findViewById(R.id.mark);
+                mEditTextView = (EditText) rootView.findViewById(R.id.editText);
+                mProgressBar = (ProgressBar) rootView.findViewById(R.id.progressBar);
+                // Языки оригинала и перевода извлекаются из списков с недавними языками, которые
+                // хранятся в виде строк. Текущий язык является первым словом в них.
+                // Есди выбрано Автоопределение, то информация об этом хранится в отдельном файле SharedPreferences.
+                if (PreferenceManager.getDefaultSharedPreferences(getActivity()).getBoolean(getString(
+                        R.string.is_auto_detect_selected), false)) {
+                    sourceLanguage = getString(R.string.auto_detect);
+                } else {
+                    sourceLanguage = PreferenceManager.getDefaultSharedPreferences(getActivity())
+                            .getString(getString(
+                                    R.string.recent_source_languages), getString(R.string.russian) + " ").split(" ")[0];
+                    if (sourceLanguage.equals(getString(R.string.russian)))
+                        recognizedLanguage = Recognizer.Language.RUSSIAN;
+                    refreshIconsVisibility();
                 }
-                String temp = sourceLanguage;
-                sourceLanguage = targetLanguage;
-                targetLanguage = temp;
-                PreferenceManager.getDefaultSharedPreferences(getActivity()).edit()
-                        .putBoolean(getActivity().getString(R.string.is_auto_detect_selected),
-                                false).apply();
+                targetLanguage = PreferenceManager.getDefaultSharedPreferences(getActivity())
+                        .getString(getString(
+                                R.string.recent_target_languages), getString(R.string.english) + " ").split(" ")[0];
                 sourceLanguageView.setText(sourceLanguage);
-                refreshRecognizedLanguage();
                 targetLanguageView.setText(targetLanguage);
-                // Запись языков в виде списков недавних языков в SharedPreferences в виде строк.
-                LanguagesFragment.saveLanguageInString(getActivity(), true, targetLanguage);
-                LanguagesFragment.saveLanguageInString(getActivity(), false, sourceLanguage);
-                // Изменение типа LanguagesFragment, если открыт список выбора языков.
-                LanguagesFragment fragment = (LanguagesFragment) getChildFragmentManager()
-                        .findFragmentById(R.id.container);
-                if (fragment != null && fragment.isAdded()) {
-                    getChildFragmentManager().popBackStack();
-                    getChildFragmentManager().beginTransaction()
-                            .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out,
-                                    android.R.anim.fade_in, android.R.anim.fade_out)
-                            .add(R.id.container, LanguagesFragment.newInstance(!fragment.isTarget))
-                            .addToBackStack(null).commit();
+                // После загрузки языков с помошью полученных пар ключ-значение необходимо будет проверить
+                // поддерживает ли текущий язык голосовой ввод.
+                allLanguages = translationsManager.getLanguages();
+                if (savedInstanceState != null) {
+                    tempSourceLanguage = savedInstanceState.getString("sourceLanguage");
+                    lastTranslation = savedInstanceState.getParcelable("lastTranslation");
+                    if (lastTranslation != null) {
+                        mTranslationView.setText(Html.fromHtml(lastTranslation.getFullTranslation()));
+                        mTranslationView.setMovementMethod(LinkMovementMethod.getInstance());
+                        refreshRecognizedLanguage();
+                    }
                 }
-                // Перевод слова, после перестановки языков местами.
-                if (lastTranslation != null) {
-                    mEditTextView.setText(lastTranslation.getSimpleTranslation());
-                    translate();
-                }
+                mEditTextView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+                    @Override
+                    public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                        translate();
+                        return false;
+                    }
+                });
+                mEditTextView.addTextChangedListener(textWatcher);
+                mEditTextView.setHorizontallyScrolling(false);
+                mEditTextView.setMaxLines(Integer.MAX_VALUE);
+                mEditTextView.setPadding(20, 10, 10, 70);
+                clearView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        mEditTextView.setText("");
+                        lastTranslation = null;
+                        refreshIconsVisibility();
+                    }
+                });
+                markView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        translationsManager.changeFavorite(lastTranslation, getActivity());
+                        refreshIconsVisibility();
+                    }
+                });
+                microphoneView.setOnClickListener(micOnClickListener);
+                // При изменении типа LanguagesFragment, он удаляется и создаётся заново, вместо простой замены,
+                // чтобы сохранить правильный (очевидный для пользователя) порядок в стеке переходов.
+                sourceLanguageView.setOnClickListener(new View.OnClickListener()
+
+                {
+                    @Override
+                    public void onClick(View v) {
+                        Fragment fragment = getChildFragmentManager().findFragmentById(R.id.container);
+                        if (fragment == null || !fragment.isAdded() || ((LanguagesFragment) fragment).isTarget) {
+                            getChildFragmentManager().popBackStack();
+                            getChildFragmentManager().beginTransaction().setCustomAnimations(android.R.anim.fade_in,
+                                    android.R.anim.fade_out, android.R.anim.fade_in, android.R.anim.fade_out)
+                                    .add(R.id.container, LanguagesFragment.newInstance(false))
+                                    .addToBackStack(null).commit();
+                        } else getChildFragmentManager().popBackStack();
+                    }
+                });
+                targetLanguageView.setOnClickListener(new View.OnClickListener()
+
+                {
+                    @Override
+                    public void onClick(View v) {
+                        Fragment fragment = getChildFragmentManager().findFragmentById(R.id.container);
+                        if (fragment == null || !fragment.isAdded() || !((LanguagesFragment) fragment).isTarget) {
+                            getChildFragmentManager().popBackStack();
+                            getChildFragmentManager().beginTransaction().setCustomAnimations(android.R.anim.fade_in,
+                                    android.R.anim.fade_out, android.R.anim.fade_in, android.R.anim.fade_out)
+                                    .add(R.id.container, LanguagesFragment.newInstance(true))
+                                    .addToBackStack(null).commit();
+                        } else getChildFragmentManager().popBackStack();
+                    }
+                });
+                exchangeView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        // Автоопредение не может быть выбрано для языка перевода, поэтому вместо него
+                        // выбирается уже определённый язык или язык по умолчанию, при перестановке языков
+                        // оригнала и перевода.
+                        if (sourceLanguage.equals(getString(R.string.auto_detect))) {
+                            sourceLanguage = targetLanguage.equals(getString(R.string.english)) ?
+                                    getString(R.string.russian) : getString(R.string.english);
+                        }
+                        String temp = sourceLanguage;
+                        sourceLanguage = targetLanguage;
+                        targetLanguage = temp;
+                        PreferenceManager.getDefaultSharedPreferences(getActivity()).edit()
+                                .putBoolean(getActivity().getString(R.string.is_auto_detect_selected),
+                                        false).apply();
+                        sourceLanguageView.setText(sourceLanguage);
+                        refreshRecognizedLanguage();
+                        targetLanguageView.setText(targetLanguage);
+                        // Запись языков в виде списков недавних языков в SharedPreferences в виде строк.
+                        LanguagesFragment.saveLanguageInString(getActivity(), true, targetLanguage);
+                        LanguagesFragment.saveLanguageInString(getActivity(), false, sourceLanguage);
+                        // Изменение типа LanguagesFragment, если открыт список выбора языков.
+                        LanguagesFragment fragment = (LanguagesFragment) getChildFragmentManager()
+                                .findFragmentById(R.id.container);
+                        if (fragment != null && fragment.isAdded()) {
+                            getChildFragmentManager().popBackStack();
+                            getChildFragmentManager().beginTransaction()
+                                    .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out,
+                                            android.R.anim.fade_in, android.R.anim.fade_out)
+                                    .add(R.id.container, LanguagesFragment.newInstance(!fragment.isTarget))
+                                    .addToBackStack(null).commit();
+                        }
+                        refreshRecognizedLanguage();
+                        // Перевод слова, после перестановки языков местами.
+                        if (lastTranslation != null) {
+                            mEditTextView.setText(lastTranslation.getSimpleTranslation());
+                            translate();
+                        }
+                    }
+                });
             }
         });
         return rootView;
-    }
-
-    @Override
-    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        refreshRecognizedLanguage();
     }
 
     @Override
@@ -345,7 +350,8 @@ public class TranslationFragment extends Fragment {
         }
     };
 
-    private View.OnClickListener getOnSpeakerClickListener(final String language, final String text,
+    private View.OnClickListener getOnSpeakerClickListener(final String language,
+                                                           final String text,
                                                            final int defaultDrawableId,
                                                            final int actionDrawableId,
                                                            final ImageView speaker) {
@@ -405,6 +411,7 @@ public class TranslationFragment extends Fragment {
                     sourceLanguage = newSourceLanguage;
                     setTranslation(translation, false);
                 }
+                getView().findViewById(R.id.editLayout).requestFocus();
             }
         };
         translationsManager.translate(text, sourceLanguage, targetLanguage, listener, getActivity());
