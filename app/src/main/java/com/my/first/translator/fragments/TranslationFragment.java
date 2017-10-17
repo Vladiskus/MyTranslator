@@ -221,7 +221,6 @@ public class TranslationFragment extends Fragment {
                                     .add(R.id.container, LanguagesFragment.newInstance(!fragment.isTarget))
                                     .addToBackStack(null).commit();
                         }
-                        refreshRecognizedLanguage();
                         // Перевод слова, после перестановки языков местами.
                         if (lastTranslation != null) {
                             mEditTextView.setText(lastTranslation.getSimpleTranslation());
@@ -229,6 +228,7 @@ public class TranslationFragment extends Fragment {
                         }
                     }
                 });
+                refreshRecognizedLanguage();
             }
         });
         return rootView;
